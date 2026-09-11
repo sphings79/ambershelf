@@ -141,8 +141,8 @@ Löschen-und-neu-anlegen ein Weg an der Regel vorbei.
 | | Quelle schreibgeschützt | Braucht | Bezug |
 | --- | --- | --- | --- |
 | **Docker auf Linux** | **ja, vom Kernel** | einen Linux-Rechner | [unten](#schnellstart) |
-| **macOS-App** | nein | macOS 12+, Apple Silicon | Releases |
-| **Windows-App** | nein | Windows 10+ | Releases |
+| **macOS-App** | nein | macOS 12+, Apple Silicon | [Herunterladen](https://github.com/sphings79/ambersync/releases/latest) |
+| **Windows-App** | nein | Windows 10+ | [Herunterladen](https://github.com/sphings79/ambersync/releases/latest) |
 
 Die Desktop-Fassungen lesen die Datenträger, die das System ohnehin eingehängt hat —
 keine Administratorrechte, kein Dienst, kein Hintergrundprozess. Was sie aufgeben, ist

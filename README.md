@@ -135,8 +135,8 @@ be a way around the rule.
 | | Source held read-only | Needs | Get it |
 | --- | --- | --- | --- |
 | **Docker on Linux** | **yes, by the kernel** | a Linux host | [below](#quick-start) |
-| **macOS application** | no | macOS 12+, Apple Silicon | Releases |
-| **Windows application** | no | Windows 10+ | Releases |
+| **macOS application** | no | macOS 12+, Apple Silicon | [Download](https://github.com/sphings79/ambersync/releases/latest) |
+| **Windows application** | no | Windows 10+ | [Download](https://github.com/sphings79/ambersync/releases/latest) |
 
 The desktop builds read the disks your system has already mounted, need no
 administrator rights, install no service and start no daemon. What they give up is
