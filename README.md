@@ -14,6 +14,8 @@ photo and video archives that live on disks in a drawer.
 [![Self-hosted](https://img.shields.io/badge/Self--hosted-yes-e08b12?style=flat-square)](#quick-start)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-sphings-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/sphings)
 
+**English** · [Deutsch](README.de.md)
+
 **If AmberSync is useful to you, please ⭐ star the repository** — it is the only way people
 with the same problem find it.
 

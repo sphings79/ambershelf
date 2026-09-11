@@ -57,6 +57,13 @@
     </nav>
 
     <div class="sidebar-foot">
+      <div class="support">
+        <a href="https://github.com/sphings79/ambersync" target="_blank" rel="noopener">
+          {{ ui.icon('star', 14) }}<span>{{ t('support.star') }}</span></a>
+        <a href="https://buymeacoffee.com/sphings" target="_blank" rel="noopener" class="coffee">
+          {{ ui.icon('coffee', 14) }}<span>{{ t('support.coffee') }}</span></a>
+      </div>
+
       <form class="segmented" method="post" action="/theme" title="{{ t('settings.theme') }}">
         <button name="theme" value="light" class="{{ 'on' if theme == 'light' }}"
                 aria-label="{{ t('settings.theme.light') }}">{{ ui.icon('sun', 14) }}</button>
