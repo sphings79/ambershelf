@@ -43,6 +43,8 @@ jobs:
             artifact: AmberSync
     runs-on: ${{ matrix.os }}
     name: build ${{ matrix.name }}
+    permissions:
+      contents: write        # needed to attach the builds to a release
     steps:
       - uses: actions/checkout@v4
 
@@ -86,3 +88,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: AmberSync-${{ matrix.name }}.zip
+          fail_on_unmatched_files: true
+          body: |
+            Nothing here is code-signed, so the first start takes one extra step:
+
+            - **macOS** — right-click `AmberSync.app` and choose **Open**, then
+              **Open** again. macOS remembers the decision.
+            - **Windows** — in the SmartScreen dialog choose **More info → Run anyway**.
+
+            **The desktop builds do not hold the master read-only.** Neither system
+            offers that to an application without administrator rights, so they say so
+            on every page rather than pretending. AmberSync itself never writes to the
+            master — but nothing stops anything else on that computer. For the
+            guarantee the kernel enforces, run the Docker edition on Linux, or point
+            the application at one (Settings → Connection).
+
+            Docker image: `ghcr.io/sphings79/ambersync:latest`
