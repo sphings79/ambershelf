@@ -73,5 +73,10 @@ DEFAULT_SETTINGS = {
     # copy; "remove" deletes them for good.
     "delete_mode": "trash",
     "keep_mtime": "1",
+    # A webhook rather than one particular service: off, errors, warnings, all.
+    "notify_url": "",
+    "notify_level": "warnings",
+    "notify_headers": "",
+    "integrity_check": "1",
     "assignment_depth": "2",
 }

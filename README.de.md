@@ -53,6 +53,11 @@ angesteckt, zwischen Mac und Windows-PC getragen, den Rest der Zeit im Schrank.
 
 <img src="docs/screenshots/preview-dark.png" alt="AmberSync Vorschau mit neuen, geänderten, umbenannten, gelöschten und nur auf der Kopie vorhandenen Dateien je Sicherungsplatte" width="880">
 
+**Beschädigung wird erkannt, bevor sie weitergetragen wird** — ein JPEG, das nicht
+mehr wie ein JPEG beginnt, ein Erpresserbrief, eine Massenänderung in einer Minute:
+
+<img src="docs/screenshots/findings-dark.png" alt="AmberSync Befunde-Seite mit einer Massenänderung und dreißig Dateien, deren Kopf nicht mehr zur Endung passt, bei eingelegter Notbremse" width="880">
+
 **Jede Ersetzung, Umbenennung und Löschung gibst du frei** — einzeln oder gesammelt, und
 die Antwort wird gemerkt:
 
@@ -79,6 +84,14 @@ die Antwort wird gemerkt:
   `.ambersync-trash` auf der Kopie, mit dem Zeitstempel des Laufs, bis du selbst aufräumst.
 - **Entscheidungen werden gemerkt.** Freigeben, diesmal übergehen oder nie wieder fragen;
   du arbeitest die Altlasten einmal ab statt bei jedem Lauf dieselben fünfzig Fälle.
+- **Beschädigte Dateien werden erkannt, nicht vermutet.** Jede Datei wird gegen die
+  Kopfbytes geprüft, die ihre Endung verspricht — ein `.jpg`, das nicht mehr mit
+  `FF D8 FF` beginnt, ist kaputt, und genau das hinterlässt Verschlüsselung. Auch die
+  schnelle Sorte, die nur die ersten Hunderttausend Bytes verwürfelt. Dazu Erpresserbriefe
+  am Namen, sinnlose zweite Endungen und Massenänderungen innerhalb einer Stunde. Jeder
+  Befund hält die Notbremse.
+- **Eine Benachrichtigung, wenn es darauf ankommt.** Eine Adresse, ein kleines JSON —
+  Home Assistant, ntfy, Gotify oder ein eigenes Skript. Kein Konto irgendwo.
 - **Plattenerkennung, die von innen nicht zu fälschen ist.** Eine Platte wird über
   Dateisystem-UUID und Seriennummer erkannt; die Zuordnung von Platte zu Rolle liegt in
   einer root-eigenen Datei auf dem Host, außerhalb der Reichweite des Containers. Ein
@@ -188,10 +201,18 @@ die Kopie der Quelle **nicht** in einen kaputten Zustand folgen darf.
 
 **Schützt mich das vor Verschlüsselungstrojanern?**
 Es schützt die *Kopie* vor einem Master, der bereits beschädigt ist — etwa weil die Platte
-an einem befallenen Windows-PC hing. Kopfbyte-Prüfungen, die Freigabe und die Notbremse
-verhindern, dass der Schaden weitergetragen wird. Es schützt **nicht** davor, dass jemand
-den Host selbst übernimmt. Dein eigentlicher Schutz dagegen ist, dass die Platten die
-meiste Zeit nicht angesteckt sind — und AmberSync ist so gebaut, dass es das nicht aufweicht.
+an einem befallenen Windows-PC hing. Jede Datei wird gegen die Kopfbytes geprüft, die ihre
+Endung verspricht, Erpresserbriefe und sinnlose zweite Endungen fallen am Namen auf, und
+eine Massenänderung innerhalb einer Stunde wird gemeldet; all das hält die Notbremse, und
+es wird nichts geschrieben. Es schützt **nicht** davor, dass jemand den Host selbst
+übernimmt. Dein eigentlicher Schutz dagegen ist, dass die Platten die meiste Zeit nicht
+angesteckt sind — und AmberSync ist so gebaut, dass es das nicht aufweicht.
+
+**Warum keine Entropie-Messung?**
+Weil sie bei einem Fotoarchiv nichts taugt. JPEG und MP4 sind bereits komprimiert und
+sehen fast perfekt zufällig aus — „das sieht verschlüsselt aus" sagt über sie also nichts
+und würde nur falsche Sicherheit geben. Textdateien deckt stattdessen eine Prüfung auf
+darstellbare Zeichen ab, Fotos und Videos ihr Kopf, den Verschlüsselung ohnehin zerstört.
 
 **Warum nicht einfach rsync?**
 rsync kopiert Dateien gut. Was es nicht hat: einen Freigabe-Ablauf, eine Zustandsdatenbank,
@@ -230,7 +251,7 @@ Netzfreigabe nicht.
 | 2 | Einlesen, Prüfsummen, Vergleich, Vorschau | ✅ fertig |
 | 3 | Kopieren mit Prüfung, Freigaben, Verlauf | ✅ fertig |
 | 4 | Aufteilung auf mehrere Kopien, Deckungsprüfung | ✅ fertig |
-| 5 | Trojaner-Erkennung, Benachrichtigungen | Umbenennungen fertig, Rest geplant |
+| 5 | Integritätsprüfung, Benachrichtigungen | ✅ fertig |
 | 6 | Desktop-Apps für macOS und Windows | 🚧 als Nächstes |
 
 > **Aktueller Stand: der Ablauf ist vollständig.** Die Desktop-Apps werden die Quelle

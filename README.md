@@ -51,6 +51,11 @@ carried between a Mac and a Windows PC, sitting in a drawer the rest of the time
 
 <img src="docs/screenshots/preview-dark.png" alt="AmberSync preview showing new, changed, renamed, deleted and copy-only files per backup drive" width="880">
 
+**Damage is recognised before it can be copied onward** — a JPEG that no longer
+begins like a JPEG, a ransom note, a mass change in one minute:
+
+<img src="docs/screenshots/findings-dark.png" alt="AmberSync findings page listing a mass change and thirty files whose header no longer matches their extension, with the brake engaged" width="880">
+
 **Every replacement, rename and deletion is yours to allow** — one by one or in
 bulk, and the answer is remembered:
 
@@ -76,6 +81,13 @@ bulk, and the answer is remembered:
   the copy, with the timestamp of the run, until you clear them out yourself.
 - **Decisions are remembered.** Approve, skip once, or never ask again; you work through
   the backlog once instead of meeting the same fifty cases every run.
+- **Damaged files are recognised, not guessed at.** Every file is checked against the
+  magic bytes its extension promises — a `.jpg` that no longer starts `FF D8 FF` is
+  broken, and that is exactly what encryption leaves behind, including the fast kind that
+  only scrambles the first few hundred kilobytes. Plus ransom notes by name, meaningless
+  second extensions, and a mass change inside one hour. Any finding holds the brake.
+- **A webhook when it matters.** One URL, a small JSON object — Home Assistant, ntfy,
+  Gotify or a script of your own. No account anywhere.
 - **Disk identity that cannot be faked from inside.** A drive is recognised by its
   filesystem UUID and serial; the mapping from drive to role lives in a root-owned file on
   the host, outside the container's reach. Renaming a folder or cloning a disk cannot flip
@@ -181,10 +193,18 @@ the source into a bad state.
 
 **Does this protect me from ransomware?**
 It protects the *copy* from a master that has already been damaged — for example because
-the drive was plugged into an infected Windows PC. Header checks, the approval step and
-the brake stop that damage from being carried over. It does **not** protect against
-someone taking over the host itself. Your real protection there is that the drives spend
-most of their life unplugged, and AmberSync is built not to undermine that.
+the drive was plugged into an infected Windows PC. Every file is checked against the
+magic bytes its extension promises, ransom notes and meaningless second extensions are
+recognised by name, and a mass change inside one hour is flagged; any of that holds the
+brake and nothing is written. It does **not** protect against someone taking over the
+host itself. Your real protection there is that the drives spend most of their life
+unplugged, and AmberSync is built not to undermine that.
+
+**Why no entropy measurement?**
+Because it does not work on a photo archive. JPEG and MP4 are already compressed and look
+almost perfectly random, so "this looks encrypted" says nothing about them — it would only
+lend false confidence. Text files are covered by a printable-characters check instead, and
+photos and video by their headers, which encryption destroys either way.
 
 **Why not just use rsync?**
 rsync copies files well. What it does not have is an approval workflow, a state database,
@@ -221,7 +241,7 @@ does not have.
 | 2 | Indexing, hashing, comparison, preview | ✅ done |
 | 3 | Copying with verification, approvals, history | ✅ done |
 | 4 | Splitting across several copies, coverage checks | ✅ done |
-| 5 | Ransomware heuristics, notifications | rename detection done, rest planned |
+| 5 | Integrity checks, notifications | ✅ done |
 | 6 | macOS and Windows desktop builds | 🚧 next |
 
 > The desktop builds will not hold the source read-only — neither system offers that

@@ -50,6 +50,9 @@
       {% endif %}
 
       <span class="nav-label">{{ t('nav.section.system') }}</span>
+      <a href="/findings" class="{{ 'on' if request.url.path == '/findings' }}">
+        {{ ui.icon('alert') }}<span>{{ t('nav.findings') }}</span>
+        {% if open_findings %}<span class="chip danger">{{ open_findings }}</span>{% endif %}</a>
       <a href="/events" class="{{ 'on' if request.url.path == '/events' }}">
         {{ ui.icon('history') }}<span>{{ t('nav.events') }}</span></a>
       <a href="/settings" class="{{ 'on' if request.url.path == '/settings' }}">

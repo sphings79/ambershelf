@@ -12,7 +12,7 @@ import json
 import time
 from pathlib import Path
 
-from engine import db, fsutil
+from engine import db, fsutil, integrity, notify
 from engine.jobs import Job
 from platforms import backend
 
@@ -104,6 +104,9 @@ def scan_disk(job: Job, disk_id: int) -> None:
         connection.execute("COMMIT")
         batch.clear()
 
+    db.drop_findings_of_scan(disk_id)
+    suspicious_names: list[tuple[str, str]] = []
+
     for relative, size, mtime in fsutil.walk(mountpoint, on_error):
         if not job.should_continue():
             flush()
@@ -112,6 +115,12 @@ def scan_disk(job: Job, disk_id: int) -> None:
         batch.append((disk_id, relative, size, mtime, scan_id))
         files_seen += 1
         bytes_seen += size
+
+        # Ransom notes and meaningless second extensions show up in the name
+        # alone, so this is free while we are walking anyway.
+        finding = integrity.suspicious_name(relative.rsplit("/", 1)[-1])
+        if finding and len(suspicious_names) < 5000:
+            suspicious_names.append((finding, relative))
         if len(batch) >= WALK_BATCH:
             flush()
             job.files_total = files_seen
@@ -157,7 +166,8 @@ def scan_disk(job: Job, disk_id: int) -> None:
             return
         connection.execute("BEGIN")
         connection.executemany(
-            "UPDATE files SET sha256 = ?, hashed_at = ? WHERE disk_id = ? AND path = ?",
+            "UPDATE files SET sha256 = ?, hashed_at = ?, health = ? "
+            "WHERE disk_id = ? AND path = ?",
             pending,
         )
         connection.execute("COMMIT")
@@ -184,7 +194,11 @@ def scan_disk(job: Job, disk_id: int) -> None:
 
             full_path = mountpoint / row["path"]
             job.current_path = row["path"]
+            health = None
             try:
+                header = integrity.read_header(full_path)
+                if header is not None:
+                    health = integrity.check_header(row["path"].rsplit("/", 1)[-1], header)
                 digest = fsutil.sha256(full_path, job.should_continue)
             except FileNotFoundError:
                 vanished.append(row["path"])
@@ -210,7 +224,7 @@ def scan_disk(job: Job, disk_id: int) -> None:
                                    f"cancelled after hashing {hashed:,} files")
                 return
 
-            pending.append((digest, db.now(), disk_id, row["path"]))
+            pending.append((digest, db.now(), health, disk_id, row["path"]))
             hashed += 1
             hashed_bytes += row["size"]
             job.files_done = hashed
@@ -232,6 +246,51 @@ def scan_disk(job: Job, disk_id: int) -> None:
     db.execute("UPDATE scans SET files_hashed = ?, bytes_hashed = ? WHERE id = ?",
                (hashed, hashed_bytes, scan_id))
 
+    # ------------------------------------------------------------ phase 3 --
+    # Files carried over from an earlier index were never looked at. Reading
+    # their first half kilobyte is cheap next to hashing them again.
+    job.phase = "check"
+    db.execute("UPDATE scans SET phase = 'check' WHERE id = ?", (scan_id,))
+    unchecked = db.scalar(
+        "SELECT COUNT(*) FROM files WHERE disk_id = ? AND health IS NULL", (disk_id,), 0)
+    job.files_total = unchecked
+    job.bytes_total = 0
+    job.files_done = 0
+    checked = 0
+
+    while True:
+        rows = db.query("SELECT path FROM files WHERE disk_id = ? AND health IS NULL "
+                        "ORDER BY path LIMIT 500", (disk_id,))
+        if not rows:
+            break
+        updates = []
+        for row in rows:
+            if not job.should_continue():
+                break
+            job.current_path = row["path"]
+            updates.append((integrity.check_file(mountpoint / row["path"],
+                                                 row["path"].rsplit("/", 1)[-1]),
+                            disk_id, row["path"]))
+            checked += 1
+            job.files_done = checked
+        connection.execute("BEGIN")
+        connection.executemany(
+            "UPDATE files SET health = ? WHERE disk_id = ? AND path = ?", updates)
+        connection.execute("COMMIT")
+        if not job.should_continue():
+            break
+
+    # ------------------------------------------------------------ findings --
+    for kind, relative in suspicious_names:
+        db.record_finding(disk["set_name"], kind, relative, disk_id, scan_id)
+
+    damaged = db.query(
+        "SELECT path, health FROM files WHERE disk_id = ? AND health IN "
+        "('header_mismatch', 'text_garbled', 'empty') ORDER BY path LIMIT 2000",
+        (disk_id,))
+    for row in damaged:
+        db.record_finding(disk["set_name"], row["health"], row["path"], disk_id, scan_id)
+
     summary = {
         "files": files_seen,
         "bytes": bytes_seen,
@@ -239,6 +298,9 @@ def scan_disk(job: Job, disk_id: int) -> None:
         "removed": removed,
         "vanished": len(vanished),
         "errors": len(errors),
+        "checked": checked,
+        "damaged": len(damaged),
+        "suspicious": len(suspicious_names),
     }
     for message in errors[:20]:
         db.log_event("warning", message, disk["set_name"], "scan")
@@ -250,6 +312,19 @@ def scan_disk(job: Job, disk_id: int) -> None:
                (json.dumps(summary), scan_id))
     db.execute("UPDATE disks SET last_seen_at = ? WHERE id = ?", (db.now(), disk_id))
     db.log_event("info", f"{disk['display_name']}: {prose}", disk["set_name"], "scan")
+
+    if damaged or suspicious_names:
+        notify.send(
+            "error",
+            f"AmberSync: {disk['display_name']}",
+            f"{len(damaged)} damaged file(s) and {len(suspicious_names)} suspicious "
+            f"name(s) found while indexing.",
+            disk["set_name"], disk=disk["display_name"],
+            damaged=len(damaged), suspicious=len(suspicious_names))
+    elif errors:
+        notify.send("warning", f"AmberSync: {disk['display_name']}",
+                    f"{len(errors)} file(s) could not be read while indexing.",
+                    disk["set_name"], disk=disk["display_name"])
     # Numbers only - the job panel is refreshed by script and stays neutral.
     job.message = f"{files_seen:,} / {fsutil.human_bytes(bytes_seen)}"
     job.current_path = ""

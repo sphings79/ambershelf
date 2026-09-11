@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from engine import apply as apply_engine
-from engine import compare, config, db, fsutil, planner, scanner
+from engine import compare, config, db, fsutil, notify, planner, scanner
 from engine.jobs import manager
 from platforms import BackendError, backend
 from server import i18n
@@ -116,6 +116,7 @@ def context(request: Request, **extra) -> dict:
         "write_protected": backend.enforces_write_protection,
         "registry_protected": backend.registry_is_protected,
         "sets": db.all_sets(),
+        "open_findings": db.count_open_findings(),
         "active_jobs": [job.as_dict() for job in manager.active()],
         # The job panel is redrawn by script, so it needs its own texts.
         "job_labels": json.dumps({
@@ -531,6 +532,35 @@ def job_action(request: Request, job_id: int, action: str):
 
 # ------------------------------------------------------------------ events --
 
+@app.get("/findings", response_class=HTMLResponse)
+def findings_page(request: Request):
+    sets = [row["name"] for row in db.all_sets()]
+    chosen = request.query_params.get("set") or (sets[0] if sets else None)
+    return render("findings.html", request, sets=sets, chosen=chosen,
+                  findings=db.open_findings(chosen) if chosen else [],
+                  msg=request.query_params.get("msg"),
+                  level=request.query_params.get("level", "info"))
+
+
+@app.post("/findings/clear")
+def clear_findings(request: Request, set_name: str = Form(...), kind: str = Form("")):
+    count = db.clear_findings(set_name, kind or None)
+    db.log_event("info", f"{count} finding(s) acknowledged", set_name, "integrity")
+    return flash(request, f"/findings?set={set_name}", "findings.cleared", "ok")
+
+
+@app.post("/settings/notify-test")
+def notify_test(request: Request):
+    url = db.get_setting("notify_url").strip()
+    if not url:
+        return flash(request, "/settings", "notify.no_url", "error")
+    ok, detail = notify.send_test(url, notify.custom_headers())
+    db.log_event("info" if ok else "warning",
+                 f"test notification: {detail}", None, "notify")
+    return flash(request, "/settings", "notify.sent" if ok else f"{detail}",
+                 "ok" if ok else "error")
+
+
 @app.get("/events", response_class=HTMLResponse)
 def events_page(request: Request):
     return render("events.html", request,
@@ -557,7 +587,8 @@ async def settings_save(request: Request):
     for key in config.DEFAULT_SETTINGS:
         if key in form:
             db.set_setting(key, str(form[key]).strip())
-        elif key in ("detect_renames", "verify_after_copy", "keep_mtime"):
+        elif key in ("detect_renames", "verify_after_copy", "keep_mtime",
+                     "integrity_check"):
             db.set_setting(key, "0")      # unchecked boxes are simply absent
     return flash(request, "/settings", "saved", "ok")
 

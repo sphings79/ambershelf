@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ui %}
+{% block title %}{{ t('findings.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('findings.title') }}</h1>
+    <div class="sub">{{ t('findings.sub') }}</div>
+  </div>
+  {% if findings and chosen %}
+    <div class="actions">
+      <form class="inline" method="post" action="/findings/clear">
+        <input type="hidden" name="set_name" value="{{ chosen }}">
+        <button>{{ ui.icon('check', 15) }} {{ t('findings.clear') }}</button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+
+{% if not findings %}
+  <div class="card">
+    <div class="note ok">
+      <span class="note-icon">{{ ui.icon('check', 18) }}</span>
+      <div>{{ t('findings.none') }}</div>
+    </div>
+  </div>
+{% else %}
+  <div class="note error">
+    <span class="note-icon">{{ ui.icon('alert', 18) }}</span>
+    <div>
+      <strong>{{ t('findings.warning.title', count=findings|length|thousands) }}</strong>
+      <p>{{ t('findings.warning.body') }}</p>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="card-head"><h2>{{ chosen }}</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{{ t('findings.kind') }}</th>
+            <th>{{ t('common.path') }}</th>
+            <th>{{ t('findings.found_at') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for f in findings %}
+          <tr>
+            <td style="white-space:nowrap">
+              <span class="chip danger">{{ ui.icon('alert', 12) }}
+                {{ t('findings.kind.' ~ f.kind) }}</span>
+            </td>
+            <td class="mono">
+              {{ f.path or '—' }}
+              {% if f.detail %}<div class="faint small">{{ f.detail }}</div>{% endif %}
+            </td>
+            <td class="small muted" style="white-space:nowrap">{{ f.found_at|dt }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted small">{{ t('findings.kinds.help') }}</p>
+  </section>
+{% endif %}
+{% endblock %}

@@ -77,12 +77,16 @@ CREATE TABLE IF NOT EXISTS files (
     sha256    TEXT,
     hashed_at TEXT,
     seen_scan INTEGER,
+    -- What the integrity check made of it: ok, no_check, header_mismatch,
+    -- text_garbled, empty, unreadable. NULL means not looked at yet.
+    health    TEXT,
     PRIMARY KEY (disk_id, path)
 ) WITHOUT ROWID;
 
 CREATE INDEX IF NOT EXISTS idx_files_sha  ON files (disk_id, sha256);
 CREATE INDEX IF NOT EXISTS idx_files_scan ON files (disk_id, seen_scan);
 CREATE INDEX IF NOT EXISTS idx_files_todo ON files (disk_id) WHERE sha256 IS NULL;
+CREATE INDEX IF NOT EXISTS idx_files_health ON files (disk_id, health);
 
 -- Aggregated view of the master tree, cut at a fixed depth. Rebuilt after a
 -- master scan so the assignment screen does not have to touch every file.
@@ -175,6 +179,22 @@ CREATE TABLE IF NOT EXISTS decisions (
     UNIQUE (set_name, disk_id, path, kind)
 );
 
+-- Anything the integrity check objected to. Kept rather than recomputed, so
+-- the interface can show it without touching the disk again.
+CREATE TABLE IF NOT EXISTS findings (
+    id       INTEGER PRIMARY KEY,
+    set_name TEXT NOT NULL,
+    disk_id  INTEGER,
+    scan_id  INTEGER,
+    kind     TEXT NOT NULL,
+    path     TEXT,
+    detail   TEXT,
+    found_at TEXT NOT NULL,
+    cleared  INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_findings ON findings (set_name, cleared, kind);
+
 CREATE TABLE IF NOT EXISTS settings (
     k TEXT PRIMARY KEY,
     v TEXT NOT NULL
@@ -215,22 +235,32 @@ def connect() -> sqlite3.Connection:
 # EXISTS does not touch an existing table, so they are added by hand.
 MIGRATIONS = [
     ("scans", "summary_json", "TEXT NOT NULL DEFAULT '{}'"),
+    ("files", "health", "TEXT"),
 ]
 
 
 def migrate(connection: sqlite3.Connection) -> None:
+    """Add columns that older databases are missing.
+
+    Runs before the schema script, because that script builds indexes over
+    these columns and an index cannot be created over something that is not
+    there yet. A table that does not exist at all is skipped - the schema
+    creates it complete.
+    """
     for table, column, definition in MIGRATIONS:
         existing = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
         if not existing:
-            continue        # the table itself is new, the schema already has it
+            continue
         if column not in existing:
             connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 
 def initialise() -> None:
     connection = connect()
-    connection.executescript(SCHEMA)
+    # Columns first: the schema below creates indexes over columns that older
+    # databases do not have yet, and an index cannot wait for a migration.
     migrate(connection)
+    connection.executescript(SCHEMA)
     for key, value in config.DEFAULT_SETTINGS.items():
         connection.execute("INSERT OR IGNORE INTO settings (k, v) VALUES (?, ?)", (key, value))
 
@@ -426,3 +456,42 @@ def remember_decision(set_name: str, disk_id: int | None, path: str, kind: str,
         "ON CONFLICT (set_name, disk_id, path, kind) DO UPDATE SET "
         "decision = excluded.decision, decided_at = excluded.decided_at",
         (set_name, disk_id, path, kind, decision, now()))
+
+
+# ---------------------------------------------------------------- findings --
+
+def record_finding(set_name: str, kind: str, path: str | None = None,
+                   disk_id: int | None = None, scan_id: int | None = None,
+                   detail: str | None = None) -> None:
+    execute(
+        "INSERT INTO findings (set_name, disk_id, scan_id, kind, path, detail, found_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (set_name, disk_id, scan_id, kind, path, detail, now()))
+
+
+def open_findings(set_name: str | None = None, limit: int = 500) -> list:
+    if set_name:
+        return query("SELECT * FROM findings WHERE cleared = 0 AND set_name = ? "
+                     "ORDER BY id DESC LIMIT ?", (set_name, limit))
+    return query("SELECT * FROM findings WHERE cleared = 0 ORDER BY id DESC LIMIT ?",
+                 (limit,))
+
+
+def count_open_findings(set_name: str | None = None) -> int:
+    if set_name:
+        return scalar("SELECT COUNT(*) FROM findings WHERE cleared = 0 AND set_name = ?",
+                      (set_name,), 0)
+    return scalar("SELECT COUNT(*) FROM findings WHERE cleared = 0", (), 0)
+
+
+def clear_findings(set_name: str, kind: str | None = None) -> int:
+    if kind:
+        return execute("UPDATE findings SET cleared = 1 WHERE set_name = ? AND kind = ?",
+                       (set_name, kind)).rowcount
+    return execute("UPDATE findings SET cleared = 1 WHERE set_name = ?",
+                   (set_name,)).rowcount
+
+
+def drop_findings_of_scan(disk_id: int) -> None:
+    """A fresh scan of a disk replaces whatever the last one found."""
+    execute("DELETE FROM findings WHERE disk_id = ?", (disk_id,))

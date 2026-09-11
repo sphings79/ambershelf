@@ -78,6 +78,10 @@
                {{ 'checked' if values.verify_after_copy not in ('0', '') }}>
         {{ t('settings.verify_after_copy') }}</label>
       <label class="check">
+        <input type="checkbox" name="integrity_check" value="1"
+               {{ 'checked' if values.integrity_check not in ('0', '') }}>
+        {{ t('settings.integrity_check') }}</label>
+      <label class="check">
         <input type="checkbox" name="keep_mtime" value="1"
                {{ 'checked' if values.keep_mtime not in ('0', '') }}>
         {{ t('settings.keep_mtime') }}</label>
@@ -93,6 +97,33 @@
     </div>
     <div class="actions" style="margin-top:18px">
       <button class="primary">{{ ui.icon('check', 15) }} {{ t('common.save') }}</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>{{ t('settings.notify') }}</h2></div>
+    <p class="muted small" style="margin-top:-6px">{{ t('settings.notify.help') }}</p>
+    <div class="field-grid">
+      <label class="field" style="grid-column: 1 / -1">
+        <span>{{ t('settings.notify_url') }}</span>
+        <input name="notify_url" type="url" placeholder="https://…"
+               value="{{ values.notify_url }}"></label>
+      <label class="field"><span>{{ t('settings.notify_level') }}</span>
+        <select name="notify_level">
+          {% for option in ('off', 'errors', 'warnings', 'all') %}
+            <option value="{{ option }}" {{ 'selected' if values.notify_level == option }}>
+              {{ t('settings.notify_level.' ~ option) }}</option>
+          {% endfor %}
+        </select></label>
+      <label class="field" style="grid-column: 1 / -1">
+        <span>{{ t('settings.notify_headers') }}</span>
+        <input name="notify_headers" placeholder='{"Authorization": "Bearer …"}'
+               value="{{ values.notify_headers }}"></label>
+    </div>
+    <div class="actions" style="margin-top:18px">
+      <button class="primary">{{ ui.icon('check', 15) }} {{ t('common.save') }}</button>
+      <button formaction="/settings/notify-test" formnovalidate>
+        {{ ui.icon('play', 15) }} {{ t('settings.notify.test') }}</button>
     </div>
   </section>
 </form>

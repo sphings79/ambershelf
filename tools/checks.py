@@ -70,7 +70,10 @@ def templates_have_their_keys() -> None:
     expanded = {
         "role.": ("master", "slave"),
         "job.": ("queued", "running", "paused", "done", "failed", "cancelled"),
-        "job.phase.": ("walk", "hash", "scope", "compare", "apply"),
+        "job.phase.": ("walk", "hash", "check", "scope", "compare", "apply"),
+        "findings.kind.": ("header_mismatch", "text_garbled", "empty", "unreadable",
+                           "ransom_note", "double_extension", "burst"),
+        "settings.notify_level.": ("off", "errors", "warnings", "all"),
         "plan.kind.": ("new", "changed", "renamed", "deleted", "slave_only",
                        "out_of_scope", "unreadable"),
         "plan.state.": ("building", "ready", "blocked", "cancelled", "applied"),
@@ -100,6 +103,58 @@ def engine_stays_platform_blind() -> None:
                 offenders.append(f"{path.name}:{number}")
     check("the engine holds no platform specifics", not offenders,
           ", ".join(offenders[:4]))
+
+
+def integrity_recognises_files() -> None:
+    """The header and name checks, against known good and known bad input.
+
+    These are the cases the whole ransomware story rests on, so they run on
+    every push rather than living in my head.
+    """
+    integrity = load(ROOT / "engine" / "integrity.py")
+
+    headers = [
+        ("urlaub.jpg", b"\xff\xd8\xff\xe0\x00\x10JFIF", "ok"),
+        ("urlaub.jpg", b"ENCRYPTED!!!!!!!\x00\x01\x02", "header_mismatch"),
+        ("clip.mp4", b"\x00\x00\x00\x18ftypmp42", "ok"),
+        ("clip.mp4", b"Salted__\x8a\x1f\x00\x00\x00\x00", "header_mismatch"),
+        ("alt.mov", b"\x00\x00\x00\x14moov\x00\x00", "ok"),
+        ("scan.pdf", b"%PDF-1.7\n%\xe2\xe3", "ok"),
+        ("bild.png", b"\x89PNG\r\n\x1a\n\x00\x00", "ok"),
+        ("raw.cr2", b"II*\x00\x10\x00\x00\x00CR", "ok"),
+        ("fuji.raf", b"FUJIFILMCCD-RAW ", "ok"),
+        ("notiz.txt", "Umlaute: \u00e4\u00f6\u00fc".encode(), "ok"),
+        ("notiz.txt", bytes(range(0, 200)), "text_garbled"),
+        ("unbekannt.xyz", b"\x00\x01\x02", "no_check"),
+        ("leer.jpg", b"", "empty"),
+    ]
+    names = [
+        ("HOW_TO_DECRYPT.txt", "ransom_note"),
+        ("!!!README!!!.hta", "ransom_note"),
+        ("RESTORE-MY-FILES.txt", "ransom_note"),
+        ("YOUR FILES ARE ENCRYPTED.html", "ransom_note"),
+        ("urlaub.jpg.a7f3k2", "double_extension"),
+        ("urlaub.jpg.locked", "double_extension"),
+        # Real archives are full of names that must not trip this.
+        ("IMG_0001.jpg", None),
+        ("\u00dcml\u00e4ute und \u00c4rger 01.dat", None),
+        ("punkt.im.namen.02.csv", None),
+        ("! Fotos ! 2019.zip", None),
+        ("readme.txt", None),
+    ]
+
+    wrong = []
+    for name, header, expected in headers:
+        got = integrity.check_header(name, header)
+        if got != expected:
+            wrong.append(f"{name}: {got} != {expected}")
+    for name, expected in names:
+        got = integrity.suspicious_name(name)
+        if got != expected:
+            wrong.append(f"{name}: {got} != {expected}")
+
+    check(f"the integrity check judges {len(headers) + len(names)} known cases",
+          not wrong, "; ".join(wrong[:3]))
 
 
 def imports_resolve() -> None:
@@ -161,6 +216,7 @@ def main() -> int:
     print("AmberSync checks\n")
     compiles()
     imports_resolve()
+    integrity_recognises_files()
     translations_match()
     templates_have_their_keys()
     engine_stays_platform_blind()

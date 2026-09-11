@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 
-from engine import db, fsutil, planner, scanner
+from engine import db, fsutil, integrity, notify, planner, scanner
 from engine.jobs import Job
 from platforms import backend
 
@@ -140,16 +140,29 @@ def build_plan(job: Job, set_name: str) -> int:
         for kind, counts in values["counts"].items():
             totals[kind] = totals.get(kind, 0) + counts["files"]
     summary["totals"] = totals
+
+    burst = detect_burst(plan_id, set_name, master["id"])
+    if burst:
+        db.record_finding(set_name, "burst", None, master["id"],
+                          detail=f"{burst['files']} of {burst['total']} "
+                                 f"within {burst['minutes']} minutes")
+    summary["burst"] = burst
+    summary["findings"] = [dict(row) for row in db.open_findings(set_name, limit=50)]
     summary["brake"] = evaluate_brake(set_name, summary, master["id"])
 
     db.execute("UPDATE plans SET state = ?, summary_json = ? WHERE id = ?",
                ("blocked" if summary["brake"]["tripped"] else "ready",
                 json.dumps(summary, ensure_ascii=False), plan_id))
 
-    db.log_event(
-        "warning" if summary["brake"]["tripped"] else "info",
-        f"plan {plan_id}: " + ", ".join(f"{kind} {count:,}" for kind, count in totals.items()),
-        set_name, "compare")
+    headline = ", ".join(f"{kind} {count:,}" for kind, count in totals.items())
+    db.log_event("warning" if summary["brake"]["tripped"] else "info",
+                 f"plan {plan_id}: {headline}", set_name, "compare")
+
+    if summary["brake"]["tripped"]:
+        notify.send("warning", "AmberSync: the brake tripped",
+                    f"The comparison was held back. {headline}.",
+                    set_name, plan=plan_id,
+                    reasons=[reason["key"] for reason in summary["brake"]["reasons"]])
     job.message = ", ".join(f"{kind} {count:,}" for kind, count in totals.items()) or "no differences"
     return plan_id
 
@@ -282,6 +295,42 @@ def compare_one(connection, plan_id: int, master_id: int, slave,
     }
 
 
+#: A cluster of changes this tight in an archive that sits still for years is
+#: not somebody editing photographs.
+BURST_WINDOW_SECONDS = 3600
+BURST_MINIMUM_FILES = 20
+BURST_SHARE = 0.8
+
+
+def detect_burst(plan_id: int, set_name: str, master_id: int) -> dict | None:
+    """Did the changed files all change at nearly the same moment?
+
+    A photo archive gains files in bursts - that is an import. It does not
+    *change* in bursts. Timestamps are never evidence on their own here, so
+    this only ever adds a reason to look, never a verdict.
+    """
+    rows = db.query(
+        "SELECT f.mtime FROM plan_items p JOIN files f "
+        "ON f.disk_id = ? AND f.path = p.path "
+        "WHERE p.plan_id = ? AND p.kind = ?",
+        (master_id, plan_id, CHANGED))
+    times = sorted(row["mtime"] for row in rows if row["mtime"])
+    if len(times) < BURST_MINIMUM_FILES:
+        return None
+
+    # Widest run of timestamps that fits inside the window.
+    best = start = 0
+    for end in range(len(times)):
+        while times[end] - times[start] > BURST_WINDOW_SECONDS:
+            start += 1
+        best = max(best, end - start + 1)
+
+    if best < len(times) * BURST_SHARE:
+        return None
+    return {"files": best, "total": len(times),
+            "minutes": BURST_WINDOW_SECONDS // 60}
+
+
 def evaluate_brake(set_name: str, summary: dict, master_id: int) -> dict:
     """Decide whether this plan may proceed without a second look.
 
@@ -326,6 +375,10 @@ def evaluate_brake(set_name: str, summary: dict, master_id: int) -> dict:
     if unreadable_count:
         reasons.append({"key": "brake.unreadable",
                         "params": {"count": f"{unreadable_count:,}"}})
+
+    damaged = db.count_open_findings(set_name)
+    if damaged:
+        reasons.append({"key": "brake.integrity", "params": {"count": f"{damaged:,}"}})
 
     for values in summary["slaves"].values():
         if not values["fits"]:

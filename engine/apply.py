@@ -24,7 +24,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from engine import compare, config, db, fsutil
+from engine import compare, config, db, fsutil, notify
 from engine.jobs import Job
 from platforms import backend
 
@@ -290,6 +290,10 @@ def apply_plan(job: Job, plan_id: int, kinds: tuple[str, ...] | None = None) -> 
     db.execute("UPDATE plans SET state = 'applied' WHERE id = ?", (plan_id,))
     db.log_event("warning" if totals["failed"] else "info",
                  f"run {run_id}: {message}", set_name, "apply")
+    notify.send("error" if totals["failed"] else "info",
+                "AmberSync: run finished" if not totals["failed"]
+                else "AmberSync: run finished with errors",
+                message, set_name, run=run_id, bytes=totals["bytes"])
     job.message = message
     job.current_path = ""
     return run_id
