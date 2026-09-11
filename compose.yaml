@@ -1,6 +1,8 @@
 services:
   ambersync:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     image: ambersync:local
     container_name: ambersync
     restart: unless-stopped

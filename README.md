@@ -114,7 +114,7 @@ distribution). `exfatprogs` if you want to repair a dirty exFAT volume.
 ```bash
 git clone https://github.com/sphings79/ambersync.git
 cd ambersync
-sudo host/install.sh      # helper, systemd unit, group, directories
+sudo docker/install.sh      # helper, systemd unit, group, directories
 docker compose up -d
 ```
 

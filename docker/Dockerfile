@@ -10,7 +10,9 @@ WORKDIR /srv
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app ./app
+COPY engine ./engine
+COPY platforms ./platforms
+COPY server ./server
 
 # The container runs unprivileged. It cannot mount anything - that is the
 # host helper's job, and the whole point of the split.
@@ -24,4 +26,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=60s --timeout=5s --start-period=10s \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=4).status == 200 else 1)"
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers"]
+CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers"]

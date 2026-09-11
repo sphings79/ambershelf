@@ -89,6 +89,17 @@
       </div>
     {% endif %}
 
+    {% if not write_protected %}
+      <div class="note warn">
+        <span class="note-icon">{{ ui.icon('unlock', 18) }}</span>
+        <div>
+          <strong>{{ t('unprotected.title') }}</strong>
+          <p>{{ t('unprotected.body') }}</p>
+          {% if not registry_protected %}<p>{{ t('unprotected.registry') }}</p>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+
     {% if msg %}
       <div class="note {{ level }} fade-up">
         <span class="note-icon">

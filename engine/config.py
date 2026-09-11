@@ -1,12 +1,14 @@
 # AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
-"""Runtime configuration, all overridable by environment variables."""
+"""Runtime configuration, all overridable by environment variables.
+
+Nothing platform specific belongs here - mount roots and socket paths
+live with the backend that uses them.
+"""
 from __future__ import annotations
 
 import os
 from pathlib import Path
 
-HELPER_SOCKET = Path(os.environ.get("AMBERSYNC_HELPER_SOCKET", "/run/ambersync/helper.sock"))
-MOUNT_ROOT = Path(os.environ.get("AMBERSYNC_MOUNT_ROOT", "/mnt/ambersync"))
 DATA_DIR = Path(os.environ.get("AMBERSYNC_DATA_DIR", "/data"))
 DB_PATH = DATA_DIR / "ambersync.db"
 

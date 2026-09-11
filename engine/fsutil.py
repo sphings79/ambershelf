@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from typing import Callable, Iterator
 
-from . import config
+from engine import config
 
 
 def is_excluded_dir(name: str) -> bool:

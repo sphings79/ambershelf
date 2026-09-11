@@ -12,7 +12,7 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
-from . import config
+from engine import config
 
 _local = threading.local()
 

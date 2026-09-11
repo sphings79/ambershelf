@@ -173,6 +173,15 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Ordnerebene für die Aufteilung",
         "settings.language": "Sprache",
         "settings.saved": "Gespeichert.",
+        "overview.unprotected": "nicht schreibgeschützt",
+        "unprotected.title": "Der Master ist auf diesem System nicht schreibgeschützt",
+        "unprotected.body":
+            "AmberSync schreibt nie auf ihn — aber jedes andere Programm auf diesem "
+            "Rechner kann es. Den vom Kernel erzwungenen Schutz gibt es nur in der "
+            "Docker-Fassung auf einem Linux-Rechner.",
+        "unprotected.registry":
+            "Auch die Zuordnung von Platte zu Rolle liegt hier in einer Datei, die dir "
+            "gehört, und ist damit änderbar.",
         "support.star": "Stern auf GitHub",
         "support.coffee": "Kaffee spendieren",
         "nav.section.main": "Betrieb",
@@ -387,6 +396,15 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Folder level used for splitting",
         "settings.language": "Language",
         "settings.saved": "Saved.",
+        "overview.unprotected": "not write-protected",
+        "unprotected.title": "The master is not write-protected on this system",
+        "unprotected.body":
+            "AmberSync never writes to it - but any other program on this computer "
+            "can. Protection the kernel actually enforces only exists in the Docker "
+            "edition on a Linux machine.",
+        "unprotected.registry":
+            "The mapping from disk to role also lives in a file you own here, so it "
+            "can be changed.",
         "support.star": "Star on GitHub",
         "support.coffee": "Buy me a coffee",
         "nav.section.main": "Operation",

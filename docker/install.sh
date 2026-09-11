@@ -1,6 +1,6 @@
 #!/bin/bash
 # Installs the AmberSync host helper on a Docker host.
-# Run as root from the repository directory: sudo host/install.sh
+# Run as root from the repository directory: sudo docker/install.sh
 set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then
@@ -45,8 +45,8 @@ install -d -m 0755 /mnt/ambersync
 install -d -m 0755 /run/ambersync
 
 echo "== helper =="
-install -m 0755 "$HERE/ambersync-helper.py" /usr/local/bin/ambersync-helper
-install -m 0644 "$HERE/ambersync-helper.service" /etc/systemd/system/ambersync-helper.service
+install -m 0755 "$HERE/helper/ambersync-helper.py" /usr/local/bin/ambersync-helper
+install -m 0644 "$HERE/helper/ambersync-helper.service" /etc/systemd/system/ambersync-helper.service
 systemctl daemon-reload
 systemctl enable --now ambersync-helper.service
 sleep 1

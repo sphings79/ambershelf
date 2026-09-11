@@ -12,11 +12,10 @@ stage never writes to a disk.
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 
-from . import db, fsutil, planner, scanner
-from .jobs import Job
+from engine import db, fsutil, planner, scanner
+from engine.jobs import Job
+from platforms import backend
 
 # Kinds a plan item can have.
 NEW = "new"                  # on the master, missing on this slave -> copy
@@ -40,13 +39,8 @@ def readiness(set_name: str) -> dict:
 
     if master is None:
         problems.append({"key": "ready.no_master", "params": {}})
-    slaves_present = []
     for disk in ([master] if master else []) + list(slaves):
         state = scanner.scan_state(disk["id"])
-        mounted = Path(scanner.mountpoint_of(disk))
-        is_mounted = mounted.is_dir() and os.path.ismount(mounted)
-        if disk["role"] == "slave":
-            slaves_present.append((disk, is_mounted, state))
         if not state["scanned"]:
             problems.append({"key": "ready.not_indexed",
                              "params": {"disk": disk["display_name"]}})
@@ -58,7 +52,7 @@ def readiness(set_name: str) -> dict:
         problems.append({"key": "ready.no_slave", "params": {}})
 
     return {"ready": not problems, "problems": problems,
-            "master": master, "slaves": slaves, "slave_state": slaves_present}
+            "master": master, "slaves": slaves}
 
 
 def build_scope(connection, set_name: str, depth: int, master_id: int,
@@ -246,7 +240,7 @@ def compare_one(connection, plan_id: int, master_id: int, slave,
         "WHERE plan_id = ? AND slave_disk_id = ? GROUP BY kind", (plan_id, slave_id)):
         counts[row[0]] = {"files": row[1], "bytes": row[2]}
 
-    mountpoint = scanner.mountpoint_of(slave)
+    mountpoint = backend.mountpoint_of(slave)
     try:
         free = fsutil.free_bytes(mountpoint)
     except OSError:

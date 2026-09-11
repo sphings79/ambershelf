@@ -9,12 +9,12 @@ almost everything already done.
 from __future__ import annotations
 
 import json
-import os
 import time
 from pathlib import Path
 
-from . import db, fsutil
-from .jobs import Job
+from engine import db, fsutil
+from engine.jobs import Job
+from platforms import backend
 
 # A file is considered unchanged when size and mtime match. exFAT stores
 # timestamps with 10 ms resolution and a timezone offset, so an exact
@@ -28,37 +28,17 @@ HASH_COMMIT_SECONDS = 5.0
 
 
 def mountpoint_of(disk: "db.sqlite3.Row") -> Path:
-    from . import config
-    if disk["role"] == "master":
-        return config.MOUNT_ROOT / disk["set_name"] / "master"
-    return config.MOUNT_ROOT / disk["set_name"] / "slaves" / disk["display_name"]
+    return backend.mountpoint_of(disk)
 
 
-def mount_options(mountpoint: Path) -> list[str]:
-    target = str(mountpoint)
-    try:
-        lines = Path("/proc/self/mountinfo").read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return []
-    for line in lines:
-        fields = line.split(" ")
-        if len(fields) > 5 and fields[4].replace("\\040", " ") == target:
-            return fields[5].split(",")
-    return []
+def require_readable(disk: "db.sqlite3.Row") -> Path:
+    """Ask the platform whether this disk may be read right now.
 
-
-def require_mounted(disk: "db.sqlite3.Row") -> Path:
-    mountpoint = mountpoint_of(disk)
-    if not os.path.ismount(mountpoint):
-        raise RuntimeError(f"{disk['display_name']} is not mounted at {mountpoint}")
-    options = mount_options(mountpoint)
-    if disk["role"] == "master" and "ro" not in options:
-        # The helper checks this too. Checking again here costs nothing and
-        # means no code path ever reads a master that is writable.
-        raise RuntimeError(
-            f"refusing to scan: the master is mounted with {','.join(options)}, not read-only"
-        )
-    return mountpoint
+    On Linux that means proving the master really is mounted read-only; on a
+    desktop system it only checks that the volume is there.
+    """
+    backend.verify_readable(disk)
+    return backend.mountpoint_of(disk)
 
 
 def start_scan_record(disk_id: int, set_name: str) -> int:
@@ -80,7 +60,7 @@ def scan_disk(job: Job, disk_id: int) -> None:
     if disk is None:
         raise RuntimeError("this disk is no longer registered")
 
-    mountpoint = require_mounted(disk)
+    mountpoint = require_readable(disk)
     scan_id = start_scan_record(disk_id, disk["set_name"])
     job.scan_id = scan_id
     job.disk_id = disk_id

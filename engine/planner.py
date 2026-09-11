@@ -12,7 +12,7 @@ Two rules that matter more than the packing itself:
 """
 from __future__ import annotations
 
-from . import db
+from engine import db
 
 ROOT_NODE = "(root)"
 

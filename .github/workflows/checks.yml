@@ -1,0 +1,29 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        # httpx is only needed for the in-process smoke test, so it stays out
+        # of requirements.txt and the shipped image.
+        run: pip install -r requirements.txt httpx
+
+      - name: Run the checks
+        env:
+          AMBERSYNC_DATA_DIR: ${{ runner.temp }}/ambersync
+          AMBERSYNC_BACKEND: linux
+        run: python tools/checks.py

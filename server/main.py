@@ -18,8 +18,10 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import compare, config, db, fsutil, helper, i18n, planner, scanner
-from .jobs import manager
+from engine import compare, config, db, fsutil, planner, scanner
+from engine.jobs import manager
+from platforms import BackendError, backend
+from server import i18n
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -39,8 +41,8 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 def refresh_registrations() -> None:
     """Pull the host registry into the database. The host stays the authority."""
     try:
-        db.sync_disks_from_helper(helper.list_registrations())
-    except helper.HelperError as exc:
+        db.sync_disks_from_helper(backend.registrations())
+    except BackendError as exc:
         db.log_event("warning", f"host helper unreachable: {exc}", None, "app")
 
 
@@ -106,7 +108,12 @@ def context(request: Request, **extra) -> dict:
         "accent_swatches": ACCENT_SWATCHES,
         "lang": language,
         "languages": i18n.LANGUAGES,
-        "helper_ok": helper.available(),
+        "helper_ok": backend.available(),
+        "backend_name": backend.name,
+        # Drives the warning band: on a desktop system the master is not
+        # held read-only by anything, and that has to be said plainly.
+        "write_protected": backend.enforces_write_protection,
+        "registry_protected": backend.registry_is_protected,
         "sets": db.all_sets(),
         "active_jobs": [job.as_dict() for job in manager.active()],
         # The job panel is redrawn by script, so it needs its own texts.
@@ -153,8 +160,8 @@ def overview(request: Request):
 def set_state(set_name: str) -> dict:
     disks = []
     try:
-        status = {entry["fs_uuid"]: entry for entry in helper.mount_status(set_name)["disks"]}
-    except helper.HelperError:
+        status = {entry["fs_uuid"]: entry for entry in backend.status(set_name)}
+    except BackendError:
         status = {}
 
     for disk in db.disks_of_set(set_name):
@@ -172,9 +179,9 @@ def set_state(set_name: str) -> dict:
         if (entry["connected"] and not entry["mounted"]
                 and (disk["fs_type"] or "").lower() == "exfat"):
             try:
-                state = helper.volume_state(disk["fs_uuid"], disk["fs_type"])
+                state = backend.volume_state(disk["fs_uuid"], disk["fs_type"])
                 entry["dirty"] = bool(state.get("dirty"))
-            except helper.HelperError:
+            except BackendError:
                 pass
 
         if entry["mounted"] and entry["mountpoint"]:
@@ -207,9 +214,9 @@ def set_state(set_name: str) -> dict:
 def disks_page(request: Request):
     refresh_registrations()
     try:
-        connected = helper.list_disks()
+        connected = [volume.as_dict() for volume in backend.list_volumes()]
         error = None
-    except helper.HelperError as exc:
+    except BackendError as exc:
         connected, error = [], str(exc)
     return render("disks.html", request, connected=connected, error=error,
                   registered=db.query("SELECT * FROM disks ORDER BY set_name, role DESC"),
@@ -221,12 +228,13 @@ def disks_page(request: Request):
 def register_disk(request: Request, fs_uuid: str = Form(...), role: str = Form(...),
                   set_name: str = Form(...), display_name: str = Form(...)):
     try:
-        helper.register(fs_uuid.strip(), role.strip(), set_name.strip(), display_name.strip())
+        backend.register(fs_uuid.strip(), role.strip(), set_name.strip(),
+                         display_name.strip())
         refresh_registrations()
         db.log_event("info", f"{display_name} registered as {role} of {set_name}",
                      set_name, "disks")
         return flash(request, "/disks", "registered", "ok")
-    except helper.HelperError as exc:
+    except BackendError as exc:
         return flash(request, "/disks", str(exc), "error")
 
 
@@ -235,14 +243,14 @@ def register_disk(request: Request, fs_uuid: str = Form(...), role: str = Form(.
 @app.post("/sets/{set_name}/mount")
 def mount_set(request: Request, set_name: str):
     try:
-        result = helper.mount_set(set_name)
-        missing = ", ".join(entry["display_name"] for entry in result["missing"])
-        message = f"{len(result['mounted'])} mounted"
+        result = backend.attach(set_name)
+        missing = ", ".join(entry["display_name"] for entry in result.missing)
+        message = f"{len(result.attached)} mounted"
         if missing:
             message += f", not connected: {missing}"
         db.log_event("info", message, set_name, "mount")
         return flash(request, "/", message, "ok")
-    except helper.HelperError as exc:
+    except BackendError as exc:
         db.log_event("error", str(exc), set_name, "mount")
         return flash(request, "/", str(exc), "error")
 
@@ -252,13 +260,13 @@ def umount_set(request: Request, set_name: str):
     if manager.busy_with() is not None:
         return flash(request, "/", "a job is still running", "error")
     try:
-        result = helper.umount_set(set_name)
-        if result["failed"]:
-            detail = "; ".join(f"{e['mountpoint']}: {e['error']}" for e in result["failed"])
+        result = backend.detach(set_name)
+        if result.failed:
+            detail = "; ".join(f"{e['mountpoint']}: {e['error']}" for e in result.failed)
             return flash(request, "/", detail, "error")
-        db.log_event("info", f"{len(result['released'])} unmounted", set_name, "mount")
+        db.log_event("info", f"{len(result.attached)} unmounted", set_name, "mount")
         return flash(request, "/", "unmounted", "ok")
-    except helper.HelperError as exc:
+    except BackendError as exc:
         return flash(request, "/", str(exc), "error")
 
 
@@ -473,6 +481,10 @@ def set_language(request: Request, lang: str = Form(...)):
 
 @app.get("/healthz")
 def healthz():
-    return {"ok": True, "helper": helper.available(),
-            "mount_root": str(config.MOUNT_ROOT),
-            "mount_root_present": os.path.isdir(config.MOUNT_ROOT)}
+    return {
+        "ok": True,
+        "backend": backend.name,
+        "backend_available": backend.available(),
+        "write_protected": backend.enforces_write_protection,
+        "data_dir_present": os.path.isdir(config.DATA_DIR),
+    }

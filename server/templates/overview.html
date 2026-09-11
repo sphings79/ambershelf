@@ -71,7 +71,9 @@
             <span class="chip">{{ t('overview.not_connected') }}</span>
           {% endif %}
 
-          {% if d.mounted %}
+          {% if d.role == 'master' and not write_protected %}
+            <span class="chip danger">{{ ui.icon('unlock', 12) }} {{ t('overview.unprotected') }}</span>
+          {% elif d.mounted %}
             {% if d.read_only %}
               <span class="chip ok">{{ ui.icon('lock', 12) }} {{ t('overview.readonly') }}</span>
             {% else %}

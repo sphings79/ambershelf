@@ -120,7 +120,7 @@ reparieren können willst.
 ```bash
 git clone https://github.com/sphings79/ambersync.git
 cd ambersync
-sudo host/install.sh      # Helfer, systemd-Unit, Gruppe, Verzeichnisse
+sudo docker/install.sh      # Helfer, systemd-Unit, Gruppe, Verzeichnisse
 docker compose up -d
 ```
 
