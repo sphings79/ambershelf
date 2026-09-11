@@ -1,0 +1,88 @@
+name: desktop
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Does the platform layer work on a real machine of each kind? A runner has
+  # no external disks, so this proves the system tools answer and their output
+  # parses - which is the part I cannot try on my own desk for Windows.
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14          # Apple Silicon
+            name: macOS
+          - os: windows-latest
+            name: Windows
+    runs-on: ${{ matrix.os }}
+    name: backend on ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python tools/backend_smoke.py
+
+  build:
+    needs: smoke
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            name: macos-arm64
+            artifact: AmberSync.app
+          - os: windows-latest
+            name: windows-x64
+            artifact: AmberSync
+    runs-on: ${{ matrix.os }}
+    name: build ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-desktop.txt
+          pip install pyinstaller==6.22.2
+
+      - name: Build
+        run: pyinstaller --noconfirm --clean desktop/ambersync.spec
+
+      - name: Check that the build starts and serves
+        shell: bash
+        run: python tools/run_smoke.py "${{ matrix.name }}"
+
+      - name: Package
+        shell: bash
+        run: |
+          cd dist
+          if [ -d "AmberSync.app" ]; then
+            # Nothing is signed, so macOS quarantines the download. The readme
+            # says how to get past it once.
+            zip -qry "../AmberSync-${{ matrix.name }}.zip" "AmberSync.app"
+          else
+            7z a -tzip "../AmberSync-${{ matrix.name }}.zip" "AmberSync" > /dev/null
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AmberSync-${{ matrix.name }}
+          path: AmberSync-${{ matrix.name }}.zip
+          retention-days: 14
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: AmberSync-${{ matrix.name }}.zip

@@ -173,6 +173,19 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Ordnerebene für die Aufteilung",
         "settings.language": "Sprache",
         "settings.saved": "Gespeichert.",
+        "settings.connection": "Verbindung",
+        "settings.connection.help":
+            "Diese App kann das Rechenwerk selbst betreiben oder ein Fenster auf "
+            "ein AmberSync sein, das anderswo läuft — etwa die Docker-Fassung auf "
+            "einem Linux-Rechner.",
+        "settings.connection.restart":
+            "Wirkt beim nächsten Start. Sollte die Adresse nicht antworten, "
+            "startet die App wieder örtlich. Mit dem Schalter --local kommst du "
+            "immer zurück.",
+        "settings.desktop_mode": "Betriebsart",
+        "settings.desktop_mode.local": "Auf diesem Rechner",
+        "settings.desktop_mode.remote": "Entfernter Server",
+        "settings.desktop_remote_url": "Adresse des entfernten Servers",
         "nav.findings": "Befunde",
         "findings.title": "Befunde",
         "findings.sub": "Was der Integritätsprüfung aufgefallen ist",
@@ -489,6 +502,19 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Folder level used for splitting",
         "settings.language": "Language",
         "settings.saved": "Saved.",
+        "settings.connection": "Connection",
+        "settings.connection.help":
+            "This application can run the engine itself, or be a window onto an "
+            "AmberSync running somewhere else - the Docker one on a Linux machine, "
+            "for instance.",
+        "settings.connection.restart":
+            "Takes effect at the next start. If the address does not answer, the "
+            "application starts locally again. The --local switch always gets you "
+            "back.",
+        "settings.desktop_mode": "Mode",
+        "settings.desktop_mode.local": "On this computer",
+        "settings.desktop_mode.remote": "Remote server",
+        "settings.desktop_remote_url": "Address of the remote server",
         "nav.findings": "Findings",
         "findings.title": "Findings",
         "findings.sub": "What the integrity check objected to",

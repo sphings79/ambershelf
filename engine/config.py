@@ -7,9 +7,10 @@ live with the backend that uses them.
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
-DATA_DIR = Path(os.environ.get("AMBERSYNC_DATA_DIR", "/data"))
+from engine import paths
+
+DATA_DIR = paths.app_data_dir()
 DB_PATH = DATA_DIR / "ambersync.db"
 
 DEFAULT_LANGUAGE = os.environ.get("AMBERSYNC_LANGUAGE", "de")
@@ -78,5 +79,9 @@ DEFAULT_SETTINGS = {
     "notify_level": "warnings",
     "notify_headers": "",
     "integrity_check": "1",
+    # Desktop builds only: "local" runs the engine here, "remote" turns the
+    # window into a view onto an AmberSync running somewhere else.
+    "desktop_mode": "local",
+    "desktop_remote_url": "",
     "assignment_depth": "2",
 }

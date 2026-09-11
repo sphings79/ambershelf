@@ -19,12 +19,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from engine import apply as apply_engine
+from engine import paths
 from engine import compare, config, db, fsutil, notify, planner, scanner
 from engine.jobs import manager
 from platforms import BackendError, backend
 from server import i18n
 
-BASE_DIR = Path(__file__).resolve().parent
+# Bundled into a single executable the templates live somewhere else, so the
+# path comes from one place that knows both cases.
+BASE_DIR = paths.resource_dir() / "server"
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -115,6 +118,7 @@ def context(request: Request, **extra) -> dict:
         # held read-only by anything, and that has to be said plainly.
         "write_protected": backend.enforces_write_protection,
         "registry_protected": backend.registry_is_protected,
+        "is_desktop": paths.desktop_build(),
         "sets": db.all_sets(),
         "open_findings": db.count_open_findings(),
         "active_jobs": [job.as_dict() for job in manager.active()],

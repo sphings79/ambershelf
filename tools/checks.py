@@ -74,6 +74,7 @@ def templates_have_their_keys() -> None:
         "findings.kind.": ("header_mismatch", "text_garbled", "empty", "unreadable",
                            "ransom_note", "double_extension", "burst"),
         "settings.notify_level.": ("off", "errors", "warnings", "all"),
+        "settings.desktop_mode.": ("local", "remote"),
         "plan.kind.": ("new", "changed", "renamed", "deleted", "slave_only",
                        "out_of_scope", "unreadable"),
         "plan.state.": ("building", "ready", "blocked", "cancelled", "applied"),

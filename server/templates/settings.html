@@ -100,6 +100,30 @@
     </div>
   </section>
 
+  {% if is_desktop %}
+  <section class="card">
+    <div class="card-head"><h2>{{ t('settings.connection') }}</h2></div>
+    <p class="muted small" style="margin-top:-6px">{{ t('settings.connection.help') }}</p>
+    <div class="field-grid">
+      <label class="field"><span>{{ t('settings.desktop_mode') }}</span>
+        <select name="desktop_mode">
+          <option value="local" {{ 'selected' if values.desktop_mode == 'local' }}>
+            {{ t('settings.desktop_mode.local') }}</option>
+          <option value="remote" {{ 'selected' if values.desktop_mode == 'remote' }}>
+            {{ t('settings.desktop_mode.remote') }}</option>
+        </select></label>
+      <label class="field" style="grid-column: 2 / -1">
+        <span>{{ t('settings.desktop_remote_url') }}</span>
+        <input name="desktop_remote_url" type="url" placeholder="http://192.168.1.10:8088"
+               value="{{ values.desktop_remote_url }}"></label>
+    </div>
+    <div class="note" style="margin-top:14px">
+      <span class="note-icon">{{ ui.icon('info', 18) }}</span>
+      <div class="small">{{ t('settings.connection.restart') }}</div>
+    </div>
+  </section>
+  {% endif %}
+
   <section class="card">
     <div class="card-head"><h2>{{ t('settings.notify') }}</h2></div>
     <p class="muted small" style="margin-top:-6px">{{ t('settings.notify.help') }}</p>

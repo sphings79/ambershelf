@@ -1,0 +1,4 @@
+# On top of requirements.txt, for the packaged macOS and Windows builds only.
+# The container image does not need a window and does not get one.
+-r requirements.txt
+pywebview==6.2.1

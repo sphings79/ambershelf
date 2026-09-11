@@ -130,6 +130,28 @@ Registration over the socket is **add-only** on purpose. Changing a role or remo
 registration requires a deliberate command on the host; otherwise delete-and-re-add would
 be a way around the rule.
 
+## Three ways to run it
+
+| | Source held read-only | Needs | Get it |
+| --- | --- | --- | --- |
+| **Docker on Linux** | **yes, by the kernel** | a Linux host | [below](#quick-start) |
+| **macOS application** | no | macOS 12+, Apple Silicon | Releases |
+| **Windows application** | no | Windows 10+ | Releases |
+
+The desktop builds read the disks your system has already mounted, need no
+administrator rights, install no service and start no daemon. What they give up is
+the one guarantee that needs a privileged half: **they cannot hold the master
+read-only**, so they say so on every page instead. AmberSync itself never writes to
+it — but nothing stops anything else on that computer.
+
+Either desktop application can also be pointed at an AmberSync running elsewhere
+(Settings → Connection), which turns it into a window onto the Docker one with the
+full guarantee behind it.
+
+Nothing is code-signed, so the first start takes one extra step: on macOS
+right-click the app and choose **Open**; on Windows click **More info → Run anyway**
+in the SmartScreen dialog.
+
 ## Quick start
 
 Requirements: a Linux host with Docker and systemd, `util-linux`, and the kernel drivers
@@ -226,8 +248,14 @@ be paused and resumed.
 No. That is the point. Plug them in, run it, eject them.
 
 **Can I run it without Docker?**
-The web part is plain Python and uvicorn, so yes — but the host helper and the shared
-mount propagation are what the compose file sets up for you.
+Yes — the macOS and Windows applications are exactly that. They carry the same engine
+and the same interface; only the platform layer differs, and with it the read-only
+guarantee, which those systems cannot give an unprivileged application.
+
+**Why is the macOS app not signed?**
+Because notarisation costs 99 € a year and this is a hobby project. Right-click the
+app and choose **Open** the first time; macOS remembers the decision. If that changes,
+the workflow that builds it is two lines away from signing.
 
 **Does it work with a NAS share, SMB or NFS?**
 Not currently. It identifies drives by filesystem UUID and serial, which a network share
@@ -242,10 +270,11 @@ does not have.
 | 3 | Copying with verification, approvals, history | ✅ done |
 | 4 | Splitting across several copies, coverage checks | ✅ done |
 | 5 | Integrity checks, notifications | ✅ done |
-| 6 | macOS and Windows desktop builds | 🚧 next |
+| 6 | macOS and Windows desktop builds | ✅ done |
 
-> The desktop builds will not hold the source read-only — neither system offers that
-> without administrator rights — so they say so on every page instead of pretending.
+> The desktop builds do not hold the source read-only — that needs a privileged
+> half neither system offers to an ordinary application — so they say so on every
+> page instead of pretending.
 
 ## Contributing
 

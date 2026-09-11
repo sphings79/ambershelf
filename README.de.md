@@ -136,6 +136,28 @@ Registrieren über den Socket geht **nur hinzufügend**, mit Absicht. Eine Rolle
 eine Registrierung entfernen verlangt einen bewussten Befehl auf dem Host; sonst wäre
 Löschen-und-neu-anlegen ein Weg an der Regel vorbei.
 
+## Drei Wege
+
+| | Quelle schreibgeschützt | Braucht | Bezug |
+| --- | --- | --- | --- |
+| **Docker auf Linux** | **ja, vom Kernel** | einen Linux-Rechner | [unten](#schnellstart) |
+| **macOS-App** | nein | macOS 12+, Apple Silicon | Releases |
+| **Windows-App** | nein | Windows 10+ | Releases |
+
+Die Desktop-Fassungen lesen die Datenträger, die das System ohnehin eingehängt hat —
+keine Administratorrechte, kein Dienst, kein Hintergrundprozess. Was sie aufgeben, ist
+die eine Zusage, die eine privilegierte Hälfte braucht: **sie können den Master nicht
+schreibschützen** und sagen das auf jeder Seite. AmberSync selbst schreibt nie auf ihn
+— aber alles andere auf diesem Rechner kann es.
+
+Beide Apps lassen sich auch auf ein AmberSync anderswo richten (Einstellungen →
+Verbindung). Dann sind sie ein Fenster auf die Docker-Fassung — mit der vollen Zusage
+dahinter.
+
+Nichts ist signiert, der erste Start kostet also einen Handgriff: unter macOS mit der
+rechten Maustaste auf die App und **Öffnen** wählen, unter Windows im SmartScreen-Dialog
+**Weitere Informationen → Trotzdem ausführen**.
+
 ## Schnellstart
 
 Vorausgesetzt: ein Linux-Host mit Docker und systemd, `util-linux` und die Kernel-Treiber
@@ -236,8 +258,14 @@ lässt sich anhalten und fortsetzen.
 Nein. Genau darum geht es. Anstecken, laufen lassen, auswerfen.
 
 **Geht das auch ohne Docker?**
-Der Webteil ist reines Python mit uvicorn, also im Prinzip ja — aber den Host-Helfer und
-die geteilte Mount-Weitergabe richtet dir die Compose-Datei ein.
+Ja — die macOS- und Windows-Apps sind genau das. Sie tragen dasselbe Rechenwerk und
+dieselbe Oberfläche; nur die Plattform-Schicht ist anders, und mit ihr die
+Schreibschutz-Zusage, die diese Systeme einer Anwendung ohne Sonderrechte nicht geben.
+
+**Warum ist die macOS-App nicht signiert?**
+Weil die Beglaubigung 99 € im Jahr kostet und das ein Feierabendprojekt ist. Beim ersten
+Start mit der rechten Maustaste auf die App und **Öffnen** wählen; macOS merkt sich das.
+Falls sich das ändert, fehlen dem Bauplan zwei Zeilen bis zur Signatur.
 
 **Funktioniert es mit einer NAS-Freigabe, SMB oder NFS?**
 Derzeit nicht. Es erkennt Platten über Dateisystem-UUID und Seriennummer, und die hat eine
@@ -252,11 +280,11 @@ Netzfreigabe nicht.
 | 3 | Kopieren mit Prüfung, Freigaben, Verlauf | ✅ fertig |
 | 4 | Aufteilung auf mehrere Kopien, Deckungsprüfung | ✅ fertig |
 | 5 | Integritätsprüfung, Benachrichtigungen | ✅ fertig |
-| 6 | Desktop-Apps für macOS und Windows | 🚧 als Nächstes |
+| 6 | Desktop-Apps für macOS und Windows | ✅ fertig |
 
-> **Aktueller Stand: der Ablauf ist vollständig.** Die Desktop-Apps werden die Quelle
-> nicht schreibschützen können — das bietet keines der beiden Systeme ohne
-> Administratorrechte — und sagen das auf jeder Seite, statt es vorzugeben.
+> **Aktueller Stand: vollständig.** Docker auf Linux hält den Master vom Kernel
+> schreibgeschützt; macOS und Windows bekommen eine fertige App, die alles andere
+> kann und offen sagt, was sie nicht kann.
 
 ## Mitmachen
 
