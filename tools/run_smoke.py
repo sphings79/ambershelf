@@ -30,9 +30,10 @@ def executable() -> Path:
     raise SystemExit("no build found under dist/")
 
 
-def fetch(path: str) -> int:
+def fetch(path: str, timeout: float = 5.0) -> int:
     try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{PORT}{path}", timeout=5) as answer:
+        with urllib.request.urlopen(f"http://127.0.0.1:{PORT}{path}",
+                                    timeout=timeout) as answer:
             return answer.status
     except urllib.error.HTTPError as exc:
         return exc.code
@@ -66,7 +67,9 @@ def main() -> int:
 
         failed = []
         for page in PAGES:
-            status = fetch(page)
+            # Enumerating disks starts PowerShell on Windows, which on a cold
+            # runner is slower than a page has any right to be.
+            status = fetch(page, timeout=40)
             print(f"  {status}  {page}")
             if status != 200:
                 failed.append(page)

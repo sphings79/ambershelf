@@ -24,6 +24,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from platforms.base import BackendError, MountReport, Volume
@@ -38,31 +39,45 @@ VOLUME_GUID = re.compile(r"Volume\{([0-9a-fA-F-]{36})\}")
 
 SUPPORTED = {"exfat": "exfat", "ntfs": "ntfs", "fat32": "vfat", "fat": "vfat"}
 
-#: One call rather than one per volume - PowerShell start-up is the expensive
-#: part, not the query.
+#: PowerShell start-up costs a second or two, and the join has to happen
+#: inside it: asking Get-Disk once per volume turned a page load into half a
+#: dozen interpreter starts. Three cmdlet calls, one process, one answer.
 LIST_SCRIPT = r"""
 $ErrorActionPreference = 'SilentlyContinue'
+$disks = @{}
+foreach ($d in Get-Disk) { $disks[[string]$d.Number] = $d }
+$parts = @{}
+foreach ($p in Get-Partition) {
+    if ($p.DriveLetter) { $parts[[string]$p.DriveLetter] = $p }
+}
 $rows = @()
 foreach ($v in Get-Volume) {
     if (-not $v.DriveLetter) { continue }
+    $letter = [string]$v.DriveLetter
+    $part = $parts[$letter]
     $disk = $null
-    try { $disk = Get-Partition -DriveLetter $v.DriveLetter | Get-Disk } catch { }
+    if ($part) { $disk = $disks[[string]$part.DiskNumber] }
     $rows += [pscustomobject]@{
-        DriveLetter = [string]$v.DriveLetter
+        DriveLetter = $letter
         Label       = $v.FileSystemLabel
         FileSystem  = $v.FileSystem
         Size        = [int64]$v.Size
         Free        = [int64]$v.SizeRemaining
         UniqueId    = [string]$v.UniqueId
         DriveType   = [string]$v.DriveType
-        Serial      = if ($disk) { ($disk.SerialNumber).Trim() } else { $null }
-        Model       = if ($disk) { $disk.FriendlyName } else { $null }
+        Serial      = if ($disk) { ([string]$disk.SerialNumber).Trim() } else { $null }
+        Model       = if ($disk) { [string]$disk.FriendlyName } else { $null }
         BusType     = if ($disk) { [string]$disk.BusType } else { $null }
         ReadOnly    = if ($disk) { [bool]$disk.IsReadOnly } else { $false }
     }
 }
 ConvertTo-Json -InputObject $rows -Depth 3 -Compress
 """
+
+#: How long a listing stays good. One page render asks for the volumes several
+#: times - once for the overview, once per disk for its state - and starting
+#: PowerShell for each of those is what made the page feel slow.
+CACHE_SECONDS = 3.0
 
 
 def powershell(script: str) -> list[dict]:
@@ -108,6 +123,8 @@ class WindowsBackend:
 
     def __init__(self) -> None:
         self.registry = JsonRegistry()
+        self._cache: list[Volume] | None = None
+        self._cached_at = 0.0
 
     def available(self) -> bool:
         try:
@@ -118,7 +135,15 @@ class WindowsBackend:
 
     # ------------------------------------------------------------- volumes --
 
-    def list_volumes(self) -> list[Volume]:
+    def list_volumes(self, fresh: bool = False) -> list[Volume]:
+        if not fresh and self._cache is not None \
+                and time.monotonic() - self._cached_at < CACHE_SECONDS:
+            # Registrations may have changed since, so those are re-joined.
+            known = {d["fs_uuid"]: d for d in self.registry.all()}
+            for volume in self._cache:
+                volume.registration = known.get(volume.fs_uuid or "")
+            return self._cache
+
         known = {d["fs_uuid"]: d for d in self.registry.all()}
         volumes: list[Volume] = []
 
@@ -142,6 +167,9 @@ class WindowsBackend:
                 model=(row.get("Model") or None),
                 registration=known.get(uuid),
             ))
+
+        self._cache = volumes
+        self._cached_at = time.monotonic()
         return volumes
 
     def volume_by_uuid(self, fs_uuid: str) -> Volume | None:
