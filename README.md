@@ -118,6 +118,10 @@ sudo docker/install.sh      # helper, systemd unit, group, directories
 docker compose up -d
 ```
 
+A ready-made image is published to `ghcr.io/sphings79/ambersync:latest` for
+`linux/amd64` and `linux/arm64` — point `image:` at it in `compose.yaml` if you would
+rather not build.
+
 The interface listens on `127.0.0.1:8088`. Put it behind a reverse proxy and restrict it
 to your own network — it has no authentication of its own on purpose, because every
 deployment already has an opinion about that. A Traefik file-provider example is in

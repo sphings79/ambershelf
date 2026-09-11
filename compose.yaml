@@ -1,5 +1,8 @@
 services:
   ambersync:
+    # Build from source, which is what the readme describes. To use the
+    # published image instead, comment the three build lines out and set
+    # image: ghcr.io/sphings79/ambersync:latest
     build:
       context: .
       dockerfile: docker/Dockerfile

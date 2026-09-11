@@ -124,6 +124,10 @@ sudo docker/install.sh      # Helfer, systemd-Unit, Gruppe, Verzeichnisse
 docker compose up -d
 ```
 
+Ein fertiges Image liegt unter `ghcr.io/sphings79/ambersync:latest` für `linux/amd64`
+und `linux/arm64` — trag es in `compose.yaml` bei `image:` ein, wenn du nicht selbst
+bauen willst.
+
 Die Oberfläche hört auf `127.0.0.1:8088`. Stell sie hinter einen Reverse Proxy und
 beschränke sie auf dein eigenes Netz — sie hat bewusst keine eigene Anmeldung, weil jede
 Installation dazu ohnehin schon eine Meinung hat. Ein Traefik-Beispiel für den
