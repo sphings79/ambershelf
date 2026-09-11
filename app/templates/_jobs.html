@@ -1,0 +1,29 @@
+{% if active_jobs %}
+  {% for job in active_jobs %}
+    <div class="job {{ job.state }}">
+      <div class="job-head">
+        <strong>{{ job.label }}</strong>
+        <span class="tag">{{ t('job.' ~ job.state) }}</span>
+        {% if job.phase %}<span class="tag quiet">{{ t('job.phase.' ~ job.phase) }}</span>{% endif %}
+      </div>
+      <div class="bar"><span style="width: {{ job.percent }}%"></span></div>
+      <div class="job-meta">
+        <span>{{ job.percent }} %</span>
+        {% if job.bytes_total %}
+          <span>{{ job.bytes_done|bytes }} {{ t('common.of') }} {{ job.bytes_total|bytes }}</span>
+        {% endif %}
+        {% if job.files_total %}
+          <span>{{ job.files_done|thousands }} / {{ job.files_total|thousands }} {{ t('common.files') }}</span>
+        {% endif %}
+        {% if job.current_path %}<span class="path">{{ job.current_path }}</span>{% endif %}
+      </div>
+      <form class="inline" method="post" action="/jobs/{{ job.id }}/{% if job.state == 'paused' %}resume{% else %}pause{% endif %}">
+        <button>{% if job.state == 'paused' %}{{ t('job.resume') }}{% else %}{{ t('job.pause') }}{% endif %}</button>
+      </form>
+      <form class="inline" method="post" action="/jobs/{{ job.id }}/cancel">
+        <button class="danger">{{ t('job.cancel') }}</button>
+      </form>
+      {% if job.message %}<p class="quiet">{{ job.message }}</p>{% endif %}
+    </div>
+  {% endfor %}
+{% endif %}

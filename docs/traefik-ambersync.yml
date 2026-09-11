@@ -1,0 +1,20 @@
+# Example router for a file-provider Traefik setup. Adjust the host rule, the
+# middleware names and the service address to your own installation.
+http:
+  routers:
+    ambersync:
+      rule: "Host(`sync.example.com`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - lan-only
+        - security-headers
+      service: ambersync
+      tls:
+        certResolver: default
+
+  services:
+    ambersync:
+      loadBalancer:
+        servers:
+          - url: "http://ambersync:8080"

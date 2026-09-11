@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "disks": [
+    {
+      "fs_uuid": "A1B2-C3D4",
+      "serial": "WD-WX11A1234567",
+      "label": "Fotoarchiv",
+      "size": 4000787030016,
+      "fs_type": "exfat",
+      "model": "WD Elements 25A3",
+      "role": "master",
+      "set_name": "fotoarchiv",
+      "display_name": "Master 4TB",
+      "registered_at": "2026-09-11T20:00:00+00:00",
+      "last_seen_at": "2026-09-11T20:00:00+00:00"
+    },
+    {
+      "fs_uuid": "E5F6-7A8B",
+      "serial": "ST1500-9QJ12345",
+      "label": "Kopie1",
+      "size": 1500301910016,
+      "fs_type": "exfat",
+      "model": "Seagate Expansion",
+      "role": "slave",
+      "set_name": "fotoarchiv",
+      "display_name": "Kopie 1",
+      "registered_at": "2026-09-11T20:05:00+00:00",
+      "last_seen_at": "2026-09-11T20:05:00+00:00"
+    }
+  ]
+}

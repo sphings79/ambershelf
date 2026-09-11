@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ t('events.title') }}{% endblock %}
+{% block content %}
+
+<section class="card">
+  <h2>{{ t('events.title') }}</h2>
+  <p class="quiet small">{{ t('events.technical') }}</p>
+  {% if not events %}
+    <p class="quiet">{{ t('events.none') }}</p>
+  {% else %}
+  <table class="events">
+    <tbody>
+    {% for e in events %}
+      <tr class="{{ e.level }}">
+        <td class="small quiet nowrap">{{ e.at|dt }}</td>
+        <td class="small"><span class="tag {{ e.level }}">{{ e.level }}</span></td>
+        <td class="small quiet">{{ e.set_name or '' }} {{ e.source or '' }}</td>
+        <td>{{ e.message }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Scans</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>{{ t('common.disk') }}</th>
+        <th>{{ t('common.state') }}</th>
+        <th class="num">{{ t('common.files') }}</th>
+        <th class="num">{{ t('common.size') }}</th>
+        <th>{{ t('overview.last_scan') }}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for s in scans %}
+      <tr>
+        <td>{{ s.display_name }}</td>
+        <td><span class="tag">{{ s.state }}</span></td>
+        <td class="num">{{ s.files_total|thousands }}</td>
+        <td class="num">{{ s.bytes_total|bytes }}</td>
+        <td class="small">{{ s.finished_at|dt }}</td>
+        <td class="small quiet">{{ s.message or '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

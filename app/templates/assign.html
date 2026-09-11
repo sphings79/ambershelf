@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ t('assign.title') }}{% endblock %}
+{% block content %}
+
+<section class="card">
+  <div class="card-head">
+    <h2>{{ t('assign.title') }} — {{ set_name }}</h2>
+    <div class="actions">
+      <form class="inline" method="post" action="/sets/{{ set_name }}/assign/split">
+        <input type="hidden" name="enabled" value="{{ '0' if state.split_enabled else '1' }}">
+        <button>{{ t('assign.disable') if state.split_enabled else t('assign.enable') }}</button>
+      </form>
+      <form class="inline" method="post" action="/sets/{{ set_name }}/assign/rebuild">
+        <button>{{ t('assign.rebuild') }}</button>
+      </form>
+      <form class="inline" method="post" action="/sets/{{ set_name }}/assign/suggest">
+        <button>{{ t('assign.apply_suggestion') }}</button>
+      </form>
+    </div>
+  </div>
+
+  <p class="quiet">
+    {{ t('assign.split_on') if state.split_enabled else t('assign.split_off') }}
+    · {{ t('assign.depth') }}: {{ state.depth }}
+    · {{ state.total_files|thousands }} {{ t('common.files') }}, {{ state.total_bytes|bytes }}
+  </p>
+
+  {% if not state.nodes %}
+    <p class="quiet">{{ t('assign.no_tree') }}</p>
+  {% else %}
+
+  {% if state.uncovered %}
+    <div class="note error">
+      <strong>{{ t('assign.uncovered') }}: {{ state.uncovered|length }} —
+        {{ state.uncovered_bytes|bytes }}, {{ state.uncovered_files|thousands }} {{ t('common.files') }}</strong>
+      <p>{{ t('assign.uncovered_warning') }}</p>
+      <p class="mono small">
+        {% for n in state.uncovered[:12] %}{{ n.path }}{% if not loop.last %} · {% endif %}{% endfor %}
+        {% if state.uncovered|length > 12 %} …{% endif %}
+      </p>
+    </div>
+  {% endif %}
+
+  {% if state.orphan_rules %}
+    <div class="note warn">
+      <strong>{{ t('assign.mixed') }}</strong>
+      <p class="mono small">
+        {% for r in state.orphan_rules %}{{ r.path }}{% if not loop.last %} · {% endif %}{% endfor %}
+      </p>
+    </div>
+  {% endif %}
+
+  <div class="capacity">
+    {% for s in state.slaves %}
+      <div class="cap {% if s.over %}over{% endif %}">
+        <div class="cap-head">
+          <strong>{{ s.disk.display_name }}</strong>
+          <span class="quiet">{{ s.disk.size_bytes|bytes }}</span>
+        </div>
+        <div class="bar"><span style="width: {{ [s.percent, 100]|min }}%"></span></div>
+        <div class="small">
+          {{ s.bytes|bytes }} {{ t('common.of') }} {{ s.capacity|bytes }} ({{ s.percent }} %)
+          · {{ s.files|thousands }} {{ t('common.files') }}
+          {% if s.over %}<strong class="error"> — {{ t('assign.over_capacity') }}</strong>{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <form method="post" action="/sets/{{ set_name }}/assign">
+    <table class="tree">
+      <thead>
+        <tr>
+          <th>{{ t('common.path') }}</th>
+          <th class="num">{{ t('common.files') }}</th>
+          <th class="num">{{ t('common.size') }}</th>
+          <th>{{ t('assign.covered') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for n in state.nodes %}
+        <tr class="{% if not n.disk_id %}uncovered{% endif %}">
+          <td class="mono">{{ n.path }}</td>
+          <td class="num">{{ n.files|thousands }}</td>
+          <td class="num">{{ n.bytes|bytes }}</td>
+          <td>
+            <select name="node:{{ n.path }}">
+              <option value="">— {{ t('assign.unassign') }} —</option>
+              {% for id, s in slaves.items() %}
+                <option value="{{ id }}" {% if n.disk_id == id %}selected{% endif %}>{{ s.display_name }}</option>
+              {% endfor %}
+            </select>
+            {% if n.inherited %}
+              <span class="quiet small">{{ t('assign.inherited') }}: {{ n.assigned_via }}</span>
+            {% endif %}
+            {% if n.mixed %}<span class="warn small">{{ t('assign.mixed') }}</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="actions">
+      <button class="primary">{{ t('common.save') }}</button>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

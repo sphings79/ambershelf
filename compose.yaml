@@ -1,0 +1,33 @@
+services:
+  ambersync:
+    build: .
+    image: ambersync:local
+    container_name: ambersync
+    restart: unless-stopped
+    user: "1000:1000"
+    # Membership in the host group that owns the helper socket. The installer
+    # writes the numeric id into .env - a name would not resolve inside the
+    # container.
+    group_add:
+      - "${AMBERSYNC_GID:?run host/install.sh first}"
+    environment:
+      AMBERSYNC_LANGUAGE: "${AMBERSYNC_LANGUAGE:-de}"
+      TZ: "${TZ:-Europe/Berlin}"
+    volumes:
+      - ./data:/data
+      # The directory, not the socket file: the helper deletes and recreates
+      # the socket on every restart, and a bind to the old inode would be
+      # dead afterwards.
+      - /run/ambersync:/run/ambersync
+      # rshared so disks the helper mounts on the host show up in here.
+      - type: bind
+        source: /mnt/ambersync
+        target: /mnt/ambersync
+        bind:
+          propagation: rshared
+    ports:
+      - "127.0.0.1:8088:8080"
+    # Deliberately no privileged, no cap_add, no devices. The container reads
+    # and writes files, nothing else.
+    security_opt:
+      - no-new-privileges:true

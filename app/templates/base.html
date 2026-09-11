@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ t('app.name') }}{% endblock %} · {{ t('app.name') }}</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💾</text></svg>">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">{{ t('app.name') }}<span>{{ t('app.tagline') }}</span></a>
+  <nav>
+    <a href="/" {% if request.url.path == '/' %}class="on"{% endif %}>{{ t('nav.overview') }}</a>
+    <a href="/disks" {% if request.url.path == '/disks' %}class="on"{% endif %}>{{ t('nav.disks') }}</a>
+    {% for s in sets %}
+      <a href="/sets/{{ s['name'] }}/assign" {% if '/assign' in request.url.path %}class="on"{% endif %}>{{ t('nav.assign') }}</a>
+      <a href="/sets/{{ s['name'] }}/plan" {% if '/plan' in request.url.path %}class="on"{% endif %}>{{ t('nav.plan') }}</a>
+    {% endfor %}
+    <a href="/events" {% if request.url.path == '/events' %}class="on"{% endif %}>{{ t('nav.events') }}</a>
+    <a href="/settings" {% if request.url.path == '/settings' %}class="on"{% endif %}>{{ t('nav.settings') }}</a>
+  </nav>
+  <form class="lang" method="post" action="/language">
+    {% for code, name in languages.items() %}
+      <button name="lang" value="{{ code }}" class="{% if code == lang %}on{% endif %}">{{ code|upper }}</button>
+    {% endfor %}
+  </form>
+</header>
+
+<main>
+  {% if not helper_ok %}
+    <div class="note error">
+      <strong>{{ t('helper.missing.title') }}</strong>
+      <p>{{ t('helper.missing.body') }}</p>
+    </div>
+  {% endif %}
+
+  {% if msg %}
+    <div class="note {{ level }}">{{ msg }}</div>
+  {% endif %}
+
+  <div id="jobs" data-empty="{{ t('job.none') }}">
+    {% include "_jobs.html" %}
+  </div>
+
+  {% block content %}{% endblock %}
+</main>
+
+<footer>
+  AmberSync · AGPL-3.0 · <a href="https://github.com/sphings79/ambersync">github.com/sphings79/ambersync</a>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

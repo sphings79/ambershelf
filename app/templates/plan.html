@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}{{ t('plan.title') }}{% endblock %}
+{% block content %}
+
+<section class="card">
+  <div class="card-head">
+    <h2>{{ t('plan.title') }} — {{ set_name }}</h2>
+    <form class="inline" method="post" action="/sets/{{ set_name }}/compare">
+      <button class="primary">{{ t('plan.build') }}</button>
+    </form>
+  </div>
+
+  <div class="note">{{ t('plan.readonly_notice') }}</div>
+
+  {% if not readiness.ready %}
+    <div class="note warn">
+      <strong>{{ t('plan.not_ready') }}</strong>
+      <ul>{% for p in readiness.problems %}<li>{{ msg_of(p) }}</li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+
+  {% if not plan %}
+    <p class="quiet">{{ t('plan.none') }}</p>
+  {% else %}
+
+  <p class="quiet small">{{ plan.created_at|dt }} · {{ t('plan.state.' ~ plan.state) }}</p>
+
+  {% set brake = plan.summary.get('brake') %}
+  {% if brake and brake.tripped %}
+    <div class="note error">
+      <strong>{{ t('plan.brake.title') }}</strong>
+      <ul>{% for r in brake.reasons %}<li>{{ msg_of(r) }}</li>{% endfor %}</ul>
+      <p>{{ t('plan.brake.body') }}</p>
+    </div>
+  {% endif %}
+
+  {% for slave_id, s in plan.summary.get('slaves', {}).items() %}
+    <div class="slave-plan">
+      <h3>{{ s.display_name }}</h3>
+      <p class="small quiet">
+        {{ t('common.free') }}: {{ s.free_bytes|bytes }} ·
+        {{ t('plan.needed') }}: {{ s.needed_bytes|bytes }} ·
+        {% if s.fits %}<span class="ok">{{ t('plan.fits') }}</span>
+        {% else %}<span class="error">{{ t('plan.does_not_fit') }}</span>{% endif %}
+      </p>
+      <div class="kinds">
+        {% for k in kinds %}
+          {% set c = s.counts.get(k) %}
+          <a class="kind {{ k }} {% if not c %}empty{% endif %}"
+             href="/sets/{{ set_name }}/plan?kind={{ k }}&slave={{ slave_id }}">
+            <span class="count">{{ (c.files if c else 0)|thousands }}</span>
+            <span class="label">{{ t('plan.kind.' ~ k) }}</span>
+            <span class="size">{{ (c.bytes if c else 0)|bytes }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+
+  <p class="note small">{{ t('plan.deletions_note') }}</p>
+
+  {% if kind %}
+    <h3>{{ t('plan.kind.' ~ kind) }}</h3>
+    <p class="quiet">{{ t('plan.kind.' ~ kind ~ '.help') }}</p>
+    {% if not items %}
+      <p class="quiet">{{ t('plan.nothing') }}</p>
+    {% else %}
+    <table class="items">
+      <thead>
+        <tr>
+          <th>{{ t('common.path') }}</th>
+          <th class="num">{{ t('common.size') }}</th>
+          <th>{{ t('common.disk') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for i in items %}
+        <tr>
+          <td class="mono">
+            {{ i.path }}
+            {% if i.other_path %}<div class="quiet small">← {{ i.other_path }}</div>{% endif %}
+          </td>
+          <td class="num">{{ i.size|bytes }}</td>
+          <td class="small">{{ slaves.get(i.slave_disk_id, {}).get('display_name', '?') }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="pager">
+      {% if offset > 0 %}
+        <a href="/sets/{{ set_name }}/plan?kind={{ kind }}&slave={{ slave or '' }}&offset={{ offset - 200 }}">←</a>
+      {% endif %}
+      {% if items|length == 200 %}
+        <a href="/sets/{{ set_name }}/plan?kind={{ kind }}&slave={{ slave or '' }}&offset={{ offset + 200 }}">→</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  {% endif %}
+
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,27 @@
+[Unit]
+Description=AmberSync host helper (mounts disks on behalf of the container)
+Documentation=https://github.com/sphings79/ambersync
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ambersync-helper
+Restart=on-failure
+RestartSec=5
+
+# The helper exists to create mounts that the rest of the system - and the
+# container - can see. Any of systemd's Protect*/ReadWritePaths options would
+# put it in a private mount namespace, where it would mount successfully and
+# nobody else would notice. So it stays in the host namespace on purpose.
+PrivateMounts=no
+
+# Hardening that does not need a namespace and therefore does not break it.
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
