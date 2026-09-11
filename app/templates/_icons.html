@@ -1,0 +1,78 @@
+{#
+  Small line icons, drawn here rather than pulled from an icon package - a
+  handful of shapes is not worth a dependency, and this way they inherit the
+  text colour and stroke weight of whatever they sit in.
+#}
+{% macro icon(name, size=16) -%}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none"
+     stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+     stroke-linejoin="round" aria-hidden="true" focusable="false">
+{%- if name == 'overview' -%}
+  <rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/>
+  <rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>
+{%- elif name == 'disk' -%}
+  <rect x="2.5" y="6" width="19" height="12" rx="3"/><circle cx="17" cy="12" r="1.6"/>
+  <path d="M6 12h6"/>
+{%- elif name == 'split' -%}
+  <rect x="3" y="3.5" width="18" height="5" rx="2"/>
+  <rect x="3" y="15.5" width="8" height="5" rx="2"/>
+  <rect x="14" y="15.5" width="7" height="5" rx="2"/>
+  <path d="M12 8.5v3M12 11.5H7v4M12 11.5h5.5v4"/>
+{%- elif name == 'preview' -%}
+  <path d="M2.5 12s3.8-6.5 9.5-6.5S21.5 12 21.5 12 17.7 18.5 12 18.5 2.5 12 2.5 12Z"/>
+  <circle cx="12" cy="12" r="2.6"/>
+{%- elif name == 'history' -%}
+  <circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 1.8"/>
+{%- elif name == 'settings' -%}
+  <path d="M4 7h10M18 7h2M4 17h4M12 17h8"/>
+  <circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/>
+{%- elif name == 'lock' -%}
+  <rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/>
+  <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
+{%- elif name == 'unlock' -%}
+  <rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/>
+  <path d="M8 10.5V7.5a4 4 0 0 1 7.5-1.9"/>
+{%- elif name == 'plug' -%}
+  <circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/>
+  <circle cx="12" cy="12" r="7.5" opacity=".45"/>
+{%- elif name == 'check' -%}
+  <path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>
+{%- elif name == 'alert' -%}
+  <path d="M12 4.5 21 19.5H3L12 4.5Z"/><path d="M12 10v4"/>
+  <circle cx="12" cy="17" r=".9" fill="currentColor" stroke="none"/>
+{%- elif name == 'info' -%}
+  <circle cx="12" cy="12" r="8.5"/><path d="M12 11.5v5"/>
+  <circle cx="12" cy="8.2" r=".9" fill="currentColor" stroke="none"/>
+{%- elif name == 'play' -%}
+  <path d="M8 5.5 18.5 12 8 18.5V5.5Z"/>
+{%- elif name == 'pause' -%}
+  <path d="M9 5.5v13M15 5.5v13"/>
+{%- elif name == 'close' -%}
+  <path d="M6 6l12 12M18 6 6 18"/>
+{%- elif name == 'scan' -%}
+  <path d="M12 3.5v11"/><path d="M8 11l4 4 4-4"/>
+  <path d="M4 17v1.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V17"/>
+{%- elif name == 'refresh' -%}
+  <path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20.5 4v4.5H16"/>
+{%- elif name == 'eject' -%}
+  <path d="M12 4.5 19 13H5l7-8.5Z"/><path d="M5 17.5h14"/>
+{%- elif name == 'mount' -%}
+  <path d="M12 20.5V9.5"/><path d="M8 13l4-4 4 4"/>
+  <path d="M4 7V5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5V7"/>
+{%- elif name == 'compare' -%}
+  <path d="M7 4.5v15M17 4.5v15"/><path d="M3 9h8M13 15h8"/>
+{%- elif name == 'folder' -%}
+  <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.2l2 2.5h7.8A2.5 2.5 0 0 1 21 10v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17V7.5Z"/>
+{%- elif name == 'sun' -%}
+  <circle cx="12" cy="12" r="4"/>
+  <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/>
+{%- elif name == 'moon' -%}
+  <path d="M20 13.5A8.2 8.2 0 0 1 10.5 4 8.5 8.5 0 1 0 20 13.5Z"/>
+{%- elif name == 'monitor' -%}
+  <rect x="2.5" y="4" width="19" height="13" rx="2.5"/><path d="M8.5 21h7M12 17v4"/>
+{%- elif name == 'brake' -%}
+  <circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V13"/>
+  <circle cx="12" cy="16.2" r=".9" fill="currentColor" stroke="none"/>
+{%- endif -%}
+</svg>
+{%- endmacro %}

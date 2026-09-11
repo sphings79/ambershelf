@@ -1,54 +1,106 @@
+{% import "_icons.html" as ui %}
 <!doctype html>
-<html lang="{{ lang }}">
+<html lang="{{ lang }}"{% if theme != 'system' %} data-theme="{{ theme }}"{% endif %} data-accent="{{ accent }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ t('app.name') }}{% endblock %} · {{ t('app.name') }}</title>
+<script>
+  // Resolve the system theme before the first paint, otherwise a dark setup
+  // gets a white flash on every page load.
+  (function () {
+    var root = document.documentElement;
+    if (root.dataset.theme) return;
+    var query = window.matchMedia('(prefers-color-scheme: dark)');
+    var apply = function () { root.dataset.theme = query.matches ? 'dark' : 'light'; };
+    apply();
+    query.addEventListener('change', apply);
+  })();
+</script>
 <link rel="stylesheet" href="/static/style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💾</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🟠</text></svg>">
 </head>
 <body>
-<header class="topbar">
-  <a class="brand" href="/">{{ t('app.name') }}<span>{{ t('app.tagline') }}</span></a>
-  <nav>
-    <a href="/" {% if request.url.path == '/' %}class="on"{% endif %}>{{ t('nav.overview') }}</a>
-    <a href="/disks" {% if request.url.path == '/disks' %}class="on"{% endif %}>{{ t('nav.disks') }}</a>
-    {% for s in sets %}
-      <a href="/sets/{{ s['name'] }}/assign" {% if '/assign' in request.url.path %}class="on"{% endif %}>{{ t('nav.assign') }}</a>
-      <a href="/sets/{{ s['name'] }}/plan" {% if '/plan' in request.url.path %}class="on"{% endif %}>{{ t('nav.plan') }}</a>
-    {% endfor %}
-    <a href="/events" {% if request.url.path == '/events' %}class="on"{% endif %}>{{ t('nav.events') }}</a>
-    <a href="/settings" {% if request.url.path == '/settings' %}class="on"{% endif %}>{{ t('nav.settings') }}</a>
-  </nav>
-  <form class="lang" method="post" action="/language">
-    {% for code, name in languages.items() %}
-      <button name="lang" value="{{ code }}" class="{% if code == lang %}on{% endif %}">{{ code|upper }}</button>
-    {% endfor %}
-  </form>
-</header>
+<div class="shell">
 
-<main>
-  {% if not helper_ok %}
-    <div class="note error">
-      <strong>{{ t('helper.missing.title') }}</strong>
-      <p>{{ t('helper.missing.body') }}</p>
+  <aside class="sidebar">
+    <a class="brand" href="/">
+      <span class="brand-mark">{{ ui.icon('disk', 18) }}</span>
+      <span>
+        <span class="brand-name">{{ t('app.name') }}</span>
+        <span class="brand-sub">{{ t('app.tagline') }}</span>
+      </span>
+    </a>
+
+    <nav class="nav">
+      <span class="nav-label">{{ t('nav.section.main') }}</span>
+      <a href="/" class="{{ 'on' if request.url.path == '/' }}">
+        {{ ui.icon('overview') }}<span>{{ t('nav.overview') }}</span></a>
+      <a href="/disks" class="{{ 'on' if request.url.path == '/disks' }}">
+        {{ ui.icon('disk') }}<span>{{ t('nav.disks') }}</span></a>
+
+      {% if sets %}
+        <span class="nav-label">{{ sets[0]['name'] }}</span>
+        <a href="/sets/{{ sets[0]['name'] }}/assign"
+           class="{{ 'on' if '/assign' in request.url.path }}">
+          {{ ui.icon('split') }}<span>{{ t('nav.assign') }}</span></a>
+        <a href="/sets/{{ sets[0]['name'] }}/plan"
+           class="{{ 'on' if '/plan' in request.url.path }}">
+          {{ ui.icon('preview') }}<span>{{ t('nav.plan') }}</span></a>
+      {% endif %}
+
+      <span class="nav-label">{{ t('nav.section.system') }}</span>
+      <a href="/events" class="{{ 'on' if request.url.path == '/events' }}">
+        {{ ui.icon('history') }}<span>{{ t('nav.events') }}</span></a>
+      <a href="/settings" class="{{ 'on' if request.url.path == '/settings' }}">
+        {{ ui.icon('settings') }}<span>{{ t('nav.settings') }}</span></a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <form class="segmented" method="post" action="/theme" title="{{ t('settings.theme') }}">
+        <button name="theme" value="light" class="{{ 'on' if theme == 'light' }}"
+                aria-label="{{ t('settings.theme.light') }}">{{ ui.icon('sun', 14) }}</button>
+        <button name="theme" value="system" class="{{ 'on' if theme == 'system' }}"
+                aria-label="{{ t('settings.theme.system') }}">{{ ui.icon('monitor', 14) }}</button>
+        <button name="theme" value="dark" class="{{ 'on' if theme == 'dark' }}"
+                aria-label="{{ t('settings.theme.dark') }}">{{ ui.icon('moon', 14) }}</button>
+      </form>
+      <form class="segmented" method="post" action="/language">
+        {% for code, name in languages.items() %}
+          <button name="lang" value="{{ code }}" class="{{ 'on' if code == lang }}">{{ code|upper }}</button>
+        {% endfor %}
+      </form>
     </div>
-  {% endif %}
+  </aside>
 
-  {% if msg %}
-    <div class="note {{ level }}">{{ msg }}</div>
-  {% endif %}
+  <main class="content">
+    {% if not helper_ok %}
+      <div class="note error">
+        <span class="note-icon">{{ ui.icon('alert', 18) }}</span>
+        <div><strong>{{ t('helper.missing.title') }}</strong>
+          <p>{{ t('helper.missing.body') }}</p></div>
+      </div>
+    {% endif %}
 
-  <div id="jobs" data-empty="{{ t('job.none') }}">
-    {% include "_jobs.html" %}
-  </div>
+    {% if msg %}
+      <div class="note {{ level }} fade-up">
+        <span class="note-icon">
+          {{ ui.icon('alert' if level == 'error' else ('check' if level == 'ok' else 'info'), 18) }}
+        </span>
+        <div>{{ msg }}</div>
+      </div>
+    {% endif %}
 
-  {% block content %}{% endblock %}
-</main>
+    <div id="jobs" class="jobs" data-labels='{{ job_labels }}'>{% include "_jobs.html" %}</div>
 
-<footer>
-  AmberSync · AGPL-3.0 · <a href="https://github.com/sphings79/ambersync">github.com/sphings79/ambersync</a>
-</footer>
+    {% block content %}{% endblock %}
+
+    <p class="foot">
+      AmberSync · AGPL-3.0 ·
+      <a href="https://github.com/sphings79/ambersync">github.com/sphings79/ambersync</a>
+    </p>
+  </main>
+</div>
 
 <script src="/static/app.js"></script>
 </body>

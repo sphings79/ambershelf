@@ -1,34 +1,88 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ui %}
 {% block title %}{{ t('settings.title') }}{% endblock %}
 {% block content %}
 
-<form class="card" method="post" action="/settings">
-  <h2>{{ t('settings.brake') }}</h2>
-  <div class="grid">
-    <label>{{ t('settings.brake_replace_absolute') }}
-      <input type="number" min="0" name="brake_replace_absolute" value="{{ values.brake_replace_absolute }}"></label>
-    <label>{{ t('settings.brake_replace_percent') }}
-      <input type="number" min="0" step="0.01" name="brake_replace_percent" value="{{ values.brake_replace_percent }}"></label>
-    <label>{{ t('settings.brake_delete_absolute') }}
-      <input type="number" min="0" name="brake_delete_absolute" value="{{ values.brake_delete_absolute }}"></label>
-    <label>{{ t('settings.brake_delete_percent') }}
-      <input type="number" min="0" step="0.01" name="brake_delete_percent" value="{{ values.brake_delete_percent }}"></label>
-    <label>{{ t('settings.slave_free_space_gb') }}
-      <input type="number" min="0" name="slave_free_space_gb" value="{{ values.slave_free_space_gb }}"></label>
-  </div>
+<div class="page-head">
+  <div><h1>{{ t('settings.title') }}</h1></div>
+</div>
 
-  <h2>{{ t('settings.behaviour') }}</h2>
-  <div class="grid">
-    <label class="check">
-      <input type="checkbox" name="detect_renames" value="1" {% if values.detect_renames not in ('0', '') %}checked{% endif %}>
-      {{ t('settings.detect_renames') }}</label>
-    <label class="check">
-      <input type="checkbox" name="verify_after_copy" value="1" {% if values.verify_after_copy not in ('0', '') %}checked{% endif %}>
-      {{ t('settings.verify_after_copy') }}</label>
-    <label>{{ t('settings.assignment_depth') }}
-      <input type="number" min="1" max="4" name="assignment_depth" value="{{ values.assignment_depth }}"></label>
-  </div>
+<section class="card">
+  <div class="card-head"><h2>{{ t('settings.appearance') }}</h2></div>
+  <div class="field-grid">
+    <div class="field">
+      <span>{{ t('settings.theme') }}</span>
+      <form class="segmented" method="post" action="/theme" style="max-width:210px">
+        <button name="theme" value="light" class="{{ 'on' if theme == 'light' }}">
+          {{ ui.icon('sun', 14) }}</button>
+        <button name="theme" value="system" class="{{ 'on' if theme == 'system' }}">
+          {{ ui.icon('monitor', 14) }}</button>
+        <button name="theme" value="dark" class="{{ 'on' if theme == 'dark' }}">
+          {{ ui.icon('moon', 14) }}</button>
+      </form>
+    </div>
 
-  <div class="actions"><button class="primary">{{ t('common.save') }}</button></div>
+    <div class="field">
+      <span>{{ t('settings.accent') }}</span>
+      <form class="swatches" method="post" action="/accent">
+        {% for name, colour in accent_swatches.items() %}
+          <button class="swatch {{ 'on' if accent == name }}" name="accent" value="{{ name }}"
+                  style="background: {{ colour }}" aria-label="{{ name }}">
+            {% if accent == name %}{{ ui.icon('check', 15) }}{% endif %}
+          </button>
+        {% endfor %}
+      </form>
+    </div>
+
+    <div class="field">
+      <span>{{ t('settings.language') }}</span>
+      <form class="segmented" method="post" action="/language" style="max-width:150px">
+        {% for code, name in languages.items() %}
+          <button name="lang" value="{{ code }}" class="{{ 'on' if code == lang }}">{{ name }}</button>
+        {% endfor %}
+      </form>
+    </div>
+  </div>
+</section>
+
+<form method="post" action="/settings">
+  <section class="card">
+    <div class="card-head">
+      <h2>{{ t('settings.brake') }}</h2>
+      <span class="chip outline">{{ ui.icon('brake', 12) }}</span>
+    </div>
+    <p class="muted small" style="margin-top:-6px">{{ t('settings.brake.help') }}</p>
+    <div class="field-grid">
+      <label class="field"><span>{{ t('settings.brake_replace_absolute') }}</span>
+        <input type="number" min="0" name="brake_replace_absolute" value="{{ values.brake_replace_absolute }}"></label>
+      <label class="field"><span>{{ t('settings.brake_replace_percent') }}</span>
+        <input type="number" min="0" step="0.01" name="brake_replace_percent" value="{{ values.brake_replace_percent }}"></label>
+      <label class="field"><span>{{ t('settings.brake_delete_absolute') }}</span>
+        <input type="number" min="0" name="brake_delete_absolute" value="{{ values.brake_delete_absolute }}"></label>
+      <label class="field"><span>{{ t('settings.brake_delete_percent') }}</span>
+        <input type="number" min="0" step="0.01" name="brake_delete_percent" value="{{ values.brake_delete_percent }}"></label>
+      <label class="field"><span>{{ t('settings.slave_free_space_gb') }}</span>
+        <input type="number" min="0" name="slave_free_space_gb" value="{{ values.slave_free_space_gb }}"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>{{ t('settings.behaviour') }}</h2></div>
+    <div class="field-grid">
+      <label class="check">
+        <input type="checkbox" name="detect_renames" value="1"
+               {{ 'checked' if values.detect_renames not in ('0', '') }}>
+        {{ t('settings.detect_renames') }}</label>
+      <label class="check">
+        <input type="checkbox" name="verify_after_copy" value="1"
+               {{ 'checked' if values.verify_after_copy not in ('0', '') }}>
+        {{ t('settings.verify_after_copy') }}</label>
+      <label class="field"><span>{{ t('settings.assignment_depth') }}</span>
+        <input type="number" min="1" max="4" name="assignment_depth" value="{{ values.assignment_depth }}"></label>
+    </div>
+    <div class="actions" style="margin-top:18px">
+      <button class="primary">{{ ui.icon('check', 15) }} {{ t('common.save') }}</button>
+    </div>
+  </section>
 </form>
 {% endblock %}

@@ -1,99 +1,139 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ui %}
 {% block title %}{{ t('disks.title') }}{% endblock %}
 {% block content %}
 
+<div class="page-head">
+  <div>
+    <h1>{{ t('disks.title') }}</h1>
+    <div class="sub">{{ t('disks.sub') }}</div>
+  </div>
+</div>
+
 <section class="card">
-  <h2>{{ t('disks.connected') }}</h2>
-  {% if error %}<div class="note error">{{ error }}</div>{% endif %}
+  <div class="card-head">
+    <h2>{{ t('disks.connected') }}</h2>
+    <span class="chip outline">{{ connected|length }}</span>
+  </div>
+
+  {% if error %}
+    <div class="note error">
+      <span class="note-icon">{{ ui.icon('alert', 18) }}</span><div>{{ error }}</div>
+    </div>
+  {% endif %}
+
   {% if not connected %}
-    <p class="quiet">{{ t('disks.none_connected') }}</p>
+    <p class="muted" style="margin:0">{{ t('disks.none_connected') }}</p>
   {% else %}
-  <p class="note">{{ t('disks.register_help') }}</p>
-  <table>
-    <thead>
-      <tr>
-        <th>{{ t('common.path') }}</th>
-        <th>{{ t('disks.label') }}</th>
-        <th>{{ t('disks.fstype') }}</th>
-        <th class="num">{{ t('common.size') }}</th>
-        <th>{{ t('disks.uuid') }}</th>
-        <th>{{ t('disks.serial') }}</th>
-        <th>{{ t('disks.register') }}</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for d in connected %}
-      <tr>
-        <td class="mono">{{ d.path }}</td>
-        <td>{{ d.label or '-' }}<div class="quiet small">{{ d.model or '' }}</div></td>
-        <td>{{ d.fs_type }}</td>
-        <td class="num">{{ d.size|bytes }}</td>
-        <td class="mono small">{{ d.fs_uuid or '-' }}</td>
-        <td class="mono small">{{ d.serial or '-' }}</td>
-        <td>
-          {% if d.registration %}
-            <span class="quiet">{{ t('disks.already') }} —
-              <strong>{{ d.registration.display_name }}</strong>
-              ({{ t('role.' ~ d.registration.role) }}, {{ d.registration.set_name }})</span>
-          {% elif d.fs_uuid %}
-            <form class="register" method="post" action="/disks/register">
-              <input type="hidden" name="fs_uuid" value="{{ d.fs_uuid }}">
-              <input name="display_name" placeholder="{{ t('disks.display_name') }}"
-                     value="{{ d.label or d.name }}" required>
-              <input name="set_name" placeholder="{{ t('disks.set_name') }}"
-                     value="{{ registered[0]['set_name'] if registered else 'fotoarchiv' }}" required>
-              <select name="role">
-                <option value="slave">{{ t('role.slave') }}</option>
-                <option value="master">{{ t('role.master') }}</option>
-              </select>
-              <button class="primary">{{ t('disks.register') }}</button>
-            </form>
-          {% else %}
-            <span class="quiet">-</span>
-          {% endif %}
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+    <div class="note">
+      <span class="note-icon">{{ ui.icon('lock', 18) }}</span>
+      <div>{{ t('disks.register_help') }}</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{{ t('disks.label') }}</th>
+            <th>{{ t('disks.fstype') }}</th>
+            <th class="num">{{ t('common.size') }}</th>
+            <th>{{ t('disks.uuid') }}</th>
+            <th>{{ t('disks.register') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for d in connected %}
+          <tr>
+            <td>
+              <strong>{{ d.label or d.name }}</strong>
+              <div class="faint small">{{ d.model or '—' }} · {{ d.path }}</div>
+            </td>
+            <td><span class="chip outline">{{ d.fs_type }}</span></td>
+            <td class="num">{{ d.size|bytes }}</td>
+            <td>
+              <div class="mono small">{{ d.fs_uuid or '—' }}</div>
+              <div class="faint small mono">{{ d.serial or '' }}</div>
+            </td>
+            <td>
+              {% if d.registration %}
+                <span class="chip {{ 'accent' if d.registration.role == 'master' else 'outline' }}">
+                  {{ ui.icon('check', 12) }} {{ d.registration.display_name }}
+                </span>
+                <div class="faint small">{{ t('role.' ~ d.registration.role) }} ·
+                  {{ d.registration.set_name }}</div>
+              {% elif d.fs_uuid %}
+                <form class="actions" method="post" action="/disks/register">
+                  <input type="hidden" name="fs_uuid" value="{{ d.fs_uuid }}">
+                  <input name="display_name" placeholder="{{ t('disks.display_name') }}"
+                         value="{{ d.label or d.name }}" size="12" required>
+                  <input name="set_name" placeholder="{{ t('disks.set_name') }}"
+                         value="{{ registered[0]['set_name'] if registered else 'fotoarchiv' }}"
+                         size="10" required>
+                  <select name="role">
+                    <option value="slave">{{ t('role.slave') }}</option>
+                    <option value="master">{{ t('role.master') }}</option>
+                  </select>
+                  <button class="primary">{{ t('disks.register') }}</button>
+                </form>
+              {% else %}
+                <span class="faint">—</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% endif %}
 </section>
 
 <section class="card">
-  <h2>{{ t('disks.registered') }}</h2>
-  <div class="note">
-    <strong>{{ t('disks.role_locked') }}</strong>
-    <p>{{ t('disks.role_locked_help') }}</p>
+  <div class="card-head">
+    <h2>{{ t('disks.registered') }}</h2>
+    <span class="chip outline">{{ registered|length }}</span>
   </div>
+
+  <div class="note warn">
+    <span class="note-icon">{{ ui.icon('lock', 18) }}</span>
+    <div>
+      <strong>{{ t('disks.role_locked') }}</strong>
+      <p>{{ t('disks.role_locked_help') }}</p>
+    </div>
+  </div>
+
   {% if not registered %}
-    <p class="quiet">{{ t('disks.none_registered') }}</p>
+    <p class="muted" style="margin:0">{{ t('disks.none_registered') }}</p>
   {% else %}
-  <table>
-    <thead>
-      <tr>
-        <th>{{ t('disks.display_name') }}</th>
-        <th>{{ t('common.role') }}</th>
-        <th>{{ t('common.set') }}</th>
-        <th>{{ t('disks.fstype') }}</th>
-        <th class="num">{{ t('common.size') }}</th>
-        <th>{{ t('disks.uuid') }}</th>
-        <th>{{ t('disks.serial') }}</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for d in registered %}
-      <tr>
-        <td><strong>{{ d.display_name }}</strong></td>
-        <td><span class="role {{ d.role }}">{{ t('role.' ~ d.role) }}</span></td>
-        <td>{{ d.set_name }}</td>
-        <td>{{ d.fs_type }}</td>
-        <td class="num">{{ d.size_bytes|bytes }}</td>
-        <td class="mono small">{{ d.fs_uuid }}</td>
-        <td class="mono small">{{ d.serial or '-' }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{{ t('disks.display_name') }}</th>
+            <th>{{ t('common.role') }}</th>
+            <th>{{ t('common.set') }}</th>
+            <th>{{ t('disks.fstype') }}</th>
+            <th class="num">{{ t('common.size') }}</th>
+            <th>{{ t('disks.uuid') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for d in registered %}
+          <tr>
+            <td><strong>{{ d.display_name }}</strong>
+              <div class="faint small">{{ d.label or '—' }}</div></td>
+            <td><span class="chip {{ 'accent' if d.role == 'master' else 'outline' }}">
+              {{ ui.icon('lock' if d.role == 'master' else 'unlock', 12) }}
+              {{ t('role.' ~ d.role) }}</span></td>
+            <td>{{ d.set_name }}</td>
+            <td class="small">{{ d.fs_type }}</td>
+            <td class="num">{{ d.size_bytes|bytes }}</td>
+            <td><div class="mono small">{{ d.fs_uuid }}</div>
+              <div class="faint small mono">{{ d.serial or '' }}</div></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% endif %}
 </section>
 {% endblock %}

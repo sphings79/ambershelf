@@ -44,7 +44,14 @@ TEMP_SUFFIX = ".ambersync-part"
 
 # Defaults for the brake. Stored in the database on first start and editable
 # in the user interface afterwards.
+# Same palette and the same five accents as AmberChest, so the two look like
+# they belong together.
+THEMES = ("system", "light", "dark")
+ACCENTS = ("amber", "violet", "blue", "emerald", "rose")
+
 DEFAULT_SETTINGS = {
+    "theme": "system",
+    "accent": "amber",
     "brake_delete_absolute": "50",
     "brake_delete_percent": "1.0",
     "brake_replace_absolute": "50",

@@ -1,53 +1,62 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ui %}
 {% block title %}{{ t('events.title') }}{% endblock %}
 {% block content %}
 
+<div class="page-head">
+  <div>
+    <h1>{{ t('events.title') }}</h1>
+    <div class="sub">{{ t('events.technical') }}</div>
+  </div>
+</div>
+
 <section class="card">
-  <h2>{{ t('events.title') }}</h2>
-  <p class="quiet small">{{ t('events.technical') }}</p>
+  <div class="card-head"><h2>{{ t('events.log') }}</h2></div>
   {% if not events %}
-    <p class="quiet">{{ t('events.none') }}</p>
+    <p class="muted" style="margin:0">{{ t('events.none') }}</p>
   {% else %}
-  <table class="events">
-    <tbody>
-    {% for e in events %}
-      <tr class="{{ e.level }}">
-        <td class="small quiet nowrap">{{ e.at|dt }}</td>
-        <td class="small"><span class="tag {{ e.level }}">{{ e.level }}</span></td>
-        <td class="small quiet">{{ e.set_name or '' }} {{ e.source or '' }}</td>
-        <td>{{ e.message }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+        {% for e in events %}
+          <tr>
+            <td class="small faint" style="white-space:nowrap">{{ e.at|dt }}</td>
+            <td><span class="chip {{ 'danger' if e.level == 'error' else ('warn' if e.level == 'warning' else '') }}">{{ e.level }}</span></td>
+            <td class="small muted">{{ e.set_name or '' }} {{ e.source or '' }}</td>
+            <td class="small">{{ e.message }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% endif %}
 </section>
 
 <section class="card">
-  <h2>Scans</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>{{ t('common.disk') }}</th>
-        <th>{{ t('common.state') }}</th>
-        <th class="num">{{ t('common.files') }}</th>
-        <th class="num">{{ t('common.size') }}</th>
-        <th>{{ t('overview.last_scan') }}</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for s in scans %}
-      <tr>
-        <td>{{ s.display_name }}</td>
-        <td><span class="tag">{{ s.state }}</span></td>
-        <td class="num">{{ s.files_total|thousands }}</td>
-        <td class="num">{{ s.bytes_total|bytes }}</td>
-        <td class="small">{{ s.finished_at|dt }}</td>
-        <td class="small quiet">{{ s.message or '' }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+  <div class="card-head"><h2>{{ t('events.scans') }}</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ t('common.disk') }}</th>
+          <th>{{ t('common.state') }}</th>
+          <th class="num">{{ t('common.files') }}</th>
+          <th class="num">{{ t('common.size') }}</th>
+          <th>{{ t('overview.last_scan') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for s in scans %}
+        <tr>
+          <td><strong>{{ s.display_name }}</strong></td>
+          <td><span class="chip {{ 'ok' if s.state == 'done' else 'warn' }}">{{ s.state }}</span></td>
+          <td class="num">{{ s.files_total|thousands }}</td>
+          <td class="num">{{ s.bytes_total|bytes }}</td>
+          <td class="small muted">{{ s.finished_at|dt }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 {% endblock %}

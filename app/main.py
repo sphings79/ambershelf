@@ -7,6 +7,7 @@ mounted read-only and the slaves are only ever read.
 """
 from __future__ import annotations
 
+import json
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -61,6 +62,15 @@ def local_time(value: str | None) -> str:
         return value
 
 
+# The colour a swatch shows in the settings - the live value lives in CSS.
+ACCENT_SWATCHES = {
+    "amber": "#e08b12",
+    "violet": "#7c5cff",
+    "blue": "#3b82f6",
+    "emerald": "#10a37f",
+    "rose": "#e0457b",
+}
+
 templates.env.filters["bytes"] = human
 templates.env.filters["dt"] = local_time
 templates.env.filters["thousands"] = lambda v: f"{int(v or 0):,}".replace(",", ".")
@@ -80,15 +90,32 @@ def context(request: Request, **extra) -> dict:
             return translate(entry["key"], **(entry.get("params") or {}))
         return str(entry)
 
+    theme = db.get_setting("theme")
+    if theme not in config.THEMES:
+        theme = "system"
+    accent = db.get_setting("accent")
+    if accent not in config.ACCENTS:
+        accent = config.ACCENTS[0]
+
     base = {
         "request": request,
         "t": translate,
         "msg_of": message,
+        "theme": theme,
+        "accent": accent,
+        "accent_swatches": ACCENT_SWATCHES,
         "lang": language,
         "languages": i18n.LANGUAGES,
         "helper_ok": helper.available(),
         "sets": db.all_sets(),
         "active_jobs": [job.as_dict() for job in manager.active()],
+        # The job panel is redrawn by script, so it needs its own texts.
+        "job_labels": json.dumps({
+            **{state: translate(f"job.{state}")
+               for state in ("queued", "running", "paused", "done", "failed", "cancelled")},
+            **{f"phase.{phase}": translate(f"job.phase.{phase}")
+               for phase in ("walk", "hash", "scope", "compare")},
+        }, ensure_ascii=False),
     }
     base.update(extra)
     return base
@@ -166,6 +193,7 @@ def set_state(set_name: str) -> dict:
         "master": next((d for d in disks if d["role"] == "master"), None),
         "slaves": [d for d in disks if d["role"] == "slave"],
         "any_mounted": any(d["mounted"] for d in disks),
+        "connected_count": sum(1 for d in disks if d["connected"]),
         "all_connected": all(d["connected"] for d in disks) and bool(disks),
         "plan": dict(plan) if plan else None,
         "split_enabled": bool(db.scalar(
@@ -419,6 +447,20 @@ async def settings_save(request: Request):
         elif key in ("detect_renames", "verify_after_copy"):
             db.set_setting(key, "0")      # unchecked boxes are simply absent
     return flash(request, "/settings", "saved", "ok")
+
+
+@app.post("/theme")
+def set_theme(request: Request, theme: str = Form(...)):
+    if theme in config.THEMES:
+        db.set_setting("theme", theme)
+    return back(request)
+
+
+@app.post("/accent")
+def set_accent(request: Request, accent: str = Form(...)):
+    if accent in config.ACCENTS:
+        db.set_setting("accent", accent)
+    return back(request)
 
 
 @app.post("/language")

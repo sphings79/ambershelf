@@ -1,121 +1,159 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ui %}
 {% block title %}{{ t('overview.title') }}{% endblock %}
 {% block content %}
 
+<div class="page-head">
+  <div>
+    <h1>{{ t('overview.title') }}</h1>
+    <div class="sub">{{ t('overview.sub') }}</div>
+  </div>
+</div>
+
 {% if not sets %}
-  <div class="note">{{ t('overview.no_sets') }} <a href="/disks">{{ t('nav.disks') }}</a></div>
+  <div class="card">
+    <div class="note">
+      <span class="note-icon">{{ ui.icon('info', 18) }}</span>
+      <div>{{ t('overview.no_sets') }}</div>
+    </div>
+    <a class="button primary" href="/disks">{{ ui.icon('disk', 15) }} {{ t('nav.disks') }}</a>
+  </div>
 {% endif %}
 
 {% for s in sets %}
 <section class="card">
   <div class="card-head">
     <h2>{{ s.name }}</h2>
+    <span class="chip {{ 'ok' if s.all_connected else 'warn' }}">
+      {{ ui.icon('plug', 12) }}
+      {{ t('overview.connected_count', connected=s.connected_count, total=s.disks|length) }}
+    </span>
+    {% if s.any_mounted %}
+      <span class="chip accent">{{ ui.icon('mount', 12) }} {{ t('overview.mounted') }}</span>
+    {% endif %}
+    {% if s.split_enabled %}
+      <span class="chip outline">{{ ui.icon('split', 12) }} {{ t('assign.title') }}</span>
+    {% endif %}
+
     <div class="actions">
-      <form class="inline" method="post" action="/sets/{{ s.name }}/mount">
-        <button>{{ t('overview.mount') }}</button>
-      </form>
-      <form class="inline" method="post" action="/sets/{{ s.name }}/umount">
-        <button>{{ t('overview.umount') }}</button>
-      </form>
-      <a class="button" href="/sets/{{ s.name }}/assign">{{ t('nav.assign') }}</a>
+      {% if s.any_mounted %}
+        <form class="inline" method="post" action="/sets/{{ s.name }}/umount">
+          <button>{{ ui.icon('eject', 15) }} {{ t('overview.umount') }}</button>
+        </form>
+      {% else %}
+        <form class="inline" method="post" action="/sets/{{ s.name }}/mount">
+          <button>{{ ui.icon('mount', 15) }} {{ t('overview.mount') }}</button>
+        </form>
+      {% endif %}
       <form class="inline" method="post" action="/sets/{{ s.name }}/compare">
-        <button class="primary">{{ t('overview.compare') }}</button>
+        <button class="primary">{{ ui.icon('compare', 15) }} {{ t('overview.compare') }}</button>
       </form>
     </div>
   </div>
 
-  <table class="disks">
-    <thead>
-      <tr>
-        <th>{{ t('common.disk') }}</th>
-        <th>{{ t('common.role') }}</th>
-        <th>{{ t('common.state') }}</th>
-        <th class="num">{{ t('overview.indexed') }}</th>
-        <th class="num">{{ t('common.size') }}</th>
-        <th>{{ t('overview.last_scan') }}</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
+  <div class="grid-cards">
     {% for d in s.disks %}
-      <tr class="{% if d.role == 'master' %}master{% endif %}">
-        <td>
-          <strong>{{ d.display_name }}</strong>
-          <div class="quiet small">{{ d.label or '-' }} · {{ d.fs_type }} · {{ d.size_bytes|bytes }}</div>
-          <div class="quiet small mono">{{ d.fs_uuid }}</div>
-        </td>
-        <td>
-          <span class="role {{ d.role }}">{{ t('role.' ~ d.role) }}</span>
-        </td>
-        <td>
-          {% if d.connected %}
-            <span class="dot ok"></span>{{ t('overview.connected') }}
-          {% else %}
-            <span class="dot off"></span>{{ t('overview.not_connected') }}
-          {% endif %}
-          <div class="small">
-            {% if d.mounted %}
-              {{ t('overview.mounted') }} ·
-              {% if d.read_only %}
-                <span class="ro">{{ t('overview.readonly') }}</span>
-              {% else %}
-                <span class="rw">{{ t('overview.writable') }}</span>
-              {% endif %}
-              {% if d.free_bytes is not none %}
-                <div class="quiet">{{ d.free_bytes|bytes }} {{ t('common.free') }}</div>
-              {% endif %}
-            {% else %}
-              <span class="quiet">{{ t('overview.not_mounted') }}</span>
-            {% endif %}
+      <article class="disk {{ 'is-master' if d.role == 'master' }} {{ 'is-offline' if not d.connected }}">
+        <div class="disk-top">
+          <span class="disk-icon">{{ ui.icon('disk', 19) }}</span>
+          <div style="min-width:0; flex:1">
+            <div class="disk-name">{{ d.display_name }}</div>
+            <div class="disk-meta">{{ d.label or '—' }} · {{ d.fs_type }} · {{ d.size_bytes|bytes }}</div>
+            <div class="disk-uuid">{{ d.fs_uuid }}</div>
           </div>
-          {% if d.dirty %}
-            <div class="note error small">
-              <strong>{{ t('overview.dirty.title') }}</strong><br>{{ t('overview.dirty.body') }}
-            </div>
+          <span class="chip {{ 'accent' if d.role == 'master' else 'outline' }}">{{ t('role.' ~ d.role) }}</span>
+        </div>
+
+        <div class="chips">
+          {% if d.connected %}
+            <span class="chip ok">{{ ui.icon('plug', 12) }} {{ t('overview.connected') }}</span>
+          {% else %}
+            <span class="chip">{{ t('overview.not_connected') }}</span>
           {% endif %}
-        </td>
-        <td class="num">
-          {{ d.scan.files|thousands }}
-          {% if d.scan.unhashed %}
-            <div class="warn small">{{ d.scan.unhashed|thousands }} {{ t('overview.unhashed') }}</div>
-          {% elif d.scan.files %}
-            <div class="ok small">{{ t('overview.index_complete') }}</div>
-          {% endif %}
-        </td>
-        <td class="num">{{ d.scan.bytes|bytes }}</td>
-        <td class="small">
-          {% if d.scan.last_scan %}
-            {{ d.scan.last_scan.finished_at|dt }}
-            {% set sum = d.scan.summary %}
-            {% if sum %}
-              <div class="quiet">
-                {{ t('scan.summary', files=sum.files|thousands, size=sum.bytes|bytes,
-                      hashed=sum.hashed|thousands) }}
-              </div>
-              {% if sum.removed %}<div class="quiet">{{ t('scan.removed', count=sum.removed|thousands) }}</div>{% endif %}
-              {% if sum.vanished %}<div class="warn">{{ t('scan.vanished', count=sum.vanished|thousands) }}</div>{% endif %}
-              {% if sum.errors %}<div class="error">{{ t('scan.errors', count=sum.errors|thousands) }}</div>{% endif %}
+
+          {% if d.mounted %}
+            {% if d.read_only %}
+              <span class="chip ok">{{ ui.icon('lock', 12) }} {{ t('overview.readonly') }}</span>
             {% else %}
-              <div class="quiet">{{ d.scan.last_scan.state }}</div>
+              <span class="chip warn">{{ ui.icon('unlock', 12) }} {{ t('overview.writable') }}</span>
             {% endif %}
           {% else %}
-            <span class="quiet">{{ t('common.never') }}</span>
+            <span class="chip">{{ t('overview.not_mounted') }}</span>
           {% endif %}
-        </td>
-        <td class="right">
-          <form class="inline" method="post" action="/sets/{{ s.name }}/scan/{{ d.id }}">
-            <button {% if not d.mounted %}disabled{% endif %}>{{ t('overview.scan') }}</button>
+
+          {% if d.scan.files and not d.scan.unhashed %}
+            <span class="chip ok">{{ ui.icon('check', 12) }} {{ t('overview.index_complete') }}</span>
+          {% elif d.scan.unhashed %}
+            <span class="chip warn">{{ d.scan.unhashed|thousands }} {{ t('overview.unhashed') }}</span>
+          {% elif d.scan.scanned %}
+            <span class="chip">{{ t('overview.empty') }}</span>
+          {% endif %}
+        </div>
+
+        {% if d.dirty %}
+          <div class="note error" style="margin:0">
+            <span class="note-icon">{{ ui.icon('alert', 16) }}</span>
+            <div><strong>{{ t('overview.dirty.title') }}</strong>
+              <p>{{ t('overview.dirty.body') }}</p></div>
+          </div>
+        {% endif %}
+
+        {% if d.mounted and d.free_bytes is not none and d.size_bytes %}
+          {% set used = d.size_bytes - d.free_bytes %}
+          <div>
+            <div class="meter"><span style="width: {{ (used * 100 / d.size_bytes)|round(1) }}%"></span></div>
+            <div class="job-meta" style="margin-top:5px">
+              <span>{{ used|bytes }} {{ t('common.used') }}</span>
+              <span>{{ d.free_bytes|bytes }} {{ t('common.free') }}</span>
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="disk-stats">
+          <div>
+            <div class="stat-label">{{ t('overview.indexed') }}</div>
+            <div class="stat-value">{{ d.scan.files|thousands }}</div>
+          </div>
+          <div>
+            <div class="stat-label">{{ t('common.size') }}</div>
+            <div class="stat-value">{{ d.scan.bytes|bytes }}</div>
+          </div>
+        </div>
+
+        {% set sum = d.scan.summary %}
+        {% if sum and (sum.removed or sum.vanished or sum.errors) %}
+          <div class="small">
+            {% if sum.removed %}<div class="muted">{{ t('scan.removed', count=sum.removed|thousands) }}</div>{% endif %}
+            {% if sum.vanished %}<div class="warn">{{ t('scan.vanished', count=sum.vanished|thousands) }}</div>{% endif %}
+            {% if sum.errors %}<div class="danger">{{ t('scan.errors', count=sum.errors|thousands) }}</div>{% endif %}
+          </div>
+        {% endif %}
+
+        <div class="disk-foot">
+          <span class="when">
+            {% if d.scan.last_scan %}
+              {{ t('overview.last_scan') }}: {{ d.scan.last_scan.finished_at|dt }}
+            {% else %}{{ t('common.never') }}{% endif %}
+          </span>
+          <form class="inline" method="post" action="/sets/{{ s.name }}/rehash/{{ d.id }}">
+            <button class="quiet" title="{{ t('overview.rehash.help') }}"
+                    {{ 'disabled' if not d.scan.files }}>
+              {{ ui.icon('refresh', 15) }} {{ t('overview.rehash') }}</button>
           </form>
-        </td>
-      </tr>
+          <form class="inline" method="post" action="/sets/{{ s.name }}/scan/{{ d.id }}">
+            <button {{ 'disabled' if not d.mounted }}>
+              {{ ui.icon('scan', 15) }} {{ t('overview.scan') }}</button>
+          </form>
+        </div>
+      </article>
     {% endfor %}
-    </tbody>
-  </table>
+  </div>
 
   {% if s.plan %}
-    <p class="quiet small">
+    <p class="small muted" style="margin:14px 0 0">
       <a href="/sets/{{ s.name }}/plan">{{ t('nav.plan') }}</a>
-      · {{ s.plan.created_at|dt }} · {{ t('plan.state.' ~ s.plan.state) }}
+      · {{ s.plan.created_at|dt }}
+      · <span class="{{ 'danger' if s.plan.state == 'blocked' }}">{{ t('plan.state.' ~ s.plan.state) }}</span>
     </p>
   {% endif %}
 </section>

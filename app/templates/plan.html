@@ -1,53 +1,77 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ui %}
 {% block title %}{{ t('plan.title') }}{% endblock %}
 {% block content %}
 
-<section class="card">
-  <div class="card-head">
-    <h2>{{ t('plan.title') }} — {{ set_name }}</h2>
+<div class="page-head">
+  <div>
+    <h1>{{ t('plan.title') }}</h1>
+    <div class="sub">{{ set_name }}</div>
+  </div>
+  <div class="actions">
     <form class="inline" method="post" action="/sets/{{ set_name }}/compare">
-      <button class="primary">{{ t('plan.build') }}</button>
+      <button class="primary">{{ ui.icon('compare', 15) }} {{ t('plan.build') }}</button>
     </form>
   </div>
+</div>
 
-  <div class="note">{{ t('plan.readonly_notice') }}</div>
+<div class="note">
+  <span class="note-icon">{{ ui.icon('info', 18) }}</span>
+  <div>{{ t('plan.readonly_notice') }}</div>
+</div>
 
-  {% if not readiness.ready %}
-    <div class="note warn">
+{% if not readiness.ready %}
+  <div class="note warn">
+    <span class="note-icon">{{ ui.icon('alert', 18) }}</span>
+    <div>
       <strong>{{ t('plan.not_ready') }}</strong>
       <ul>{% for p in readiness.problems %}<li>{{ msg_of(p) }}</li>{% endfor %}</ul>
     </div>
-  {% endif %}
+  </div>
+{% endif %}
 
-  {% if not plan %}
-    <p class="quiet">{{ t('plan.none') }}</p>
-  {% else %}
+{% if not plan %}
+  <div class="card"><p class="muted" style="margin:0">{{ t('plan.none') }}</p></div>
+{% else %}
 
-  <p class="quiet small">{{ plan.created_at|dt }} · {{ t('plan.state.' ~ plan.state) }}</p>
-
-  {% set brake = plan.summary.get('brake') %}
-  {% if brake and brake.tripped %}
-    <div class="note error">
+{% set brake = plan.summary.get('brake') %}
+{% if brake and brake.tripped %}
+  <div class="note error">
+    <span class="note-icon">{{ ui.icon('brake', 18) }}</span>
+    <div>
       <strong>{{ t('plan.brake.title') }}</strong>
       <ul>{% for r in brake.reasons %}<li>{{ msg_of(r) }}</li>{% endfor %}</ul>
       <p>{{ t('plan.brake.body') }}</p>
     </div>
-  {% endif %}
+  </div>
+{% endif %}
+
+<section class="card">
+  <div class="card-head">
+    <h2>{{ t('plan.result') }}</h2>
+    <span class="chip {{ 'danger' if plan.state == 'blocked' else 'ok' }}">
+      {{ t('plan.state.' ~ plan.state) }}</span>
+    <span class="chip outline">{{ plan.created_at|dt }}</span>
+  </div>
 
   {% for slave_id, s in plan.summary.get('slaves', {}).items() %}
-    <div class="slave-plan">
-      <h3>{{ s.display_name }}</h3>
-      <p class="small quiet">
-        {{ t('common.free') }}: {{ s.free_bytes|bytes }} ·
-        {{ t('plan.needed') }}: {{ s.needed_bytes|bytes }} ·
-        {% if s.fits %}<span class="ok">{{ t('plan.fits') }}</span>
-        {% else %}<span class="error">{{ t('plan.does_not_fit') }}</span>{% endif %}
-      </p>
-      <div class="kinds">
+    <div class="slave-block">
+      <div class="card-head" style="margin-bottom:10px">
+        <h3>{{ s.display_name }}</h3>
+        <span class="chip {{ 'ok' if s.fits else 'danger' }}">
+          {{ ui.icon('check' if s.fits else 'alert', 12) }}
+          {{ t('plan.fits') if s.fits else t('plan.does_not_fit') }}
+        </span>
+        <span class="chip outline">{{ t('plan.needed') }}: {{ s.needed_bytes|bytes }}</span>
+        <span class="chip outline">{{ t('common.free') }}: {{ s.free_bytes|bytes }}</span>
+      </div>
+
+      <div class="tiles">
         {% for k in kinds %}
           {% set c = s.counts.get(k) %}
-          <a class="kind {{ k }} {% if not c %}empty{% endif %}"
-             href="/sets/{{ set_name }}/plan?kind={{ k }}&slave={{ slave_id }}">
+          <a class="tile {{ k }} {{ 'empty' if not c }} {{ 'on' if kind == k and slave == slave_id }}"
+             href="/sets/{{ set_name }}/plan?kind={{ k }}&slave={{ slave_id }}"
+             title="{{ t('plan.kind.' ~ k ~ '.help') }}">
             <span class="count">{{ (c.files if c else 0)|thousands }}</span>
             <span class="label">{{ t('plan.kind.' ~ k) }}</span>
             <span class="size">{{ (c.bytes if c else 0)|bytes }}</span>
@@ -57,46 +81,62 @@
     </div>
   {% endfor %}
 
-  <p class="note small">{{ t('plan.deletions_note') }}</p>
-
-  {% if kind %}
-    <h3>{{ t('plan.kind.' ~ kind) }}</h3>
-    <p class="quiet">{{ t('plan.kind.' ~ kind ~ '.help') }}</p>
-    {% if not items %}
-      <p class="quiet">{{ t('plan.nothing') }}</p>
-    {% else %}
-    <table class="items">
-      <thead>
-        <tr>
-          <th>{{ t('common.path') }}</th>
-          <th class="num">{{ t('common.size') }}</th>
-          <th>{{ t('common.disk') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for i in items %}
-        <tr>
-          <td class="mono">
-            {{ i.path }}
-            {% if i.other_path %}<div class="quiet small">← {{ i.other_path }}</div>{% endif %}
-          </td>
-          <td class="num">{{ i.size|bytes }}</td>
-          <td class="small">{{ slaves.get(i.slave_disk_id, {}).get('display_name', '?') }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    <div class="pager">
-      {% if offset > 0 %}
-        <a href="/sets/{{ set_name }}/plan?kind={{ kind }}&slave={{ slave or '' }}&offset={{ offset - 200 }}">←</a>
-      {% endif %}
-      {% if items|length == 200 %}
-        <a href="/sets/{{ set_name }}/plan?kind={{ kind }}&slave={{ slave or '' }}&offset={{ offset + 200 }}">→</a>
-      {% endif %}
-    </div>
-    {% endif %}
-  {% endif %}
-
-  {% endif %}
+  <div class="note" style="margin:18px 0 0">
+    <span class="note-icon">{{ ui.icon('info', 18) }}</span>
+    <div class="small">{{ t('plan.deletions_note') }}</div>
+  </div>
 </section>
+
+{% if kind %}
+  <section class="card">
+    <div class="card-head">
+      <h2>{{ t('plan.kind.' ~ kind) }}</h2>
+      {% if slave %}<span class="chip outline">{{ slaves.get(slave|int, {}).get('display_name', '') }}</span>{% endif %}
+      <div class="actions">
+        <a class="button quiet" href="/sets/{{ set_name }}/plan">{{ ui.icon('close', 15) }}</a>
+      </div>
+    </div>
+    <p class="muted small" style="margin-top:-6px">{{ t('plan.kind.' ~ kind ~ '.help') }}</p>
+
+    {% if not items %}
+      <p class="muted" style="margin:0">{{ t('plan.nothing') }}</p>
+    {% else %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>{{ t('common.path') }}</th>
+              <th class="num">{{ t('common.size') }}</th>
+              <th>{{ t('common.disk') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for i in items %}
+            <tr>
+              <td class="mono">
+                {{ i.path }}
+                {% if i.other_path %}
+                  <div class="faint small">{{ ui.icon('refresh', 11) }} {{ i.other_path }}</div>
+                {% endif %}
+              </td>
+              <td class="num">{{ i.size|bytes }}</td>
+              <td class="small muted">{{ slaves.get(i.slave_disk_id, {}).get('display_name', '?') }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="pager">
+        {% if offset > 0 %}
+          <a class="button" href="/sets/{{ set_name }}/plan?kind={{ kind }}&slave={{ slave or '' }}&offset={{ offset - 200 }}">←</a>
+        {% endif %}
+        {% if items|length == 200 %}
+          <a class="button" href="/sets/{{ set_name }}/plan?kind={{ kind }}&slave={{ slave or '' }}&offset={{ offset + 200 }}">→</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+{% endif %}
+
+{% endif %}
 {% endblock %}

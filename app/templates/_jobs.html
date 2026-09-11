@@ -1,29 +1,29 @@
-{% if active_jobs %}
-  {% for job in active_jobs %}
-    <div class="job {{ job.state }}">
-      <div class="job-head">
-        <strong>{{ job.label }}</strong>
-        <span class="tag">{{ t('job.' ~ job.state) }}</span>
-        {% if job.phase %}<span class="tag quiet">{{ t('job.phase.' ~ job.phase) }}</span>{% endif %}
-      </div>
-      <div class="bar"><span style="width: {{ job.percent }}%"></span></div>
-      <div class="job-meta">
-        <span>{{ job.percent }} %</span>
-        {% if job.bytes_total %}
-          <span>{{ job.bytes_done|bytes }} {{ t('common.of') }} {{ job.bytes_total|bytes }}</span>
-        {% endif %}
-        {% if job.files_total %}
-          <span>{{ job.files_done|thousands }} / {{ job.files_total|thousands }} {{ t('common.files') }}</span>
-        {% endif %}
-        {% if job.current_path %}<span class="path">{{ job.current_path }}</span>{% endif %}
-      </div>
-      <form class="inline" method="post" action="/jobs/{{ job.id }}/{% if job.state == 'paused' %}resume{% else %}pause{% endif %}">
-        <button>{% if job.state == 'paused' %}{{ t('job.resume') }}{% else %}{{ t('job.pause') }}{% endif %}</button>
-      </form>
-      <form class="inline" method="post" action="/jobs/{{ job.id }}/cancel">
-        <button class="danger">{{ t('job.cancel') }}</button>
-      </form>
-      {% if job.message %}<p class="quiet">{{ job.message }}</p>{% endif %}
+{% import "_icons.html" as ui %}
+{% for job in active_jobs %}
+  <div class="job {{ job.state }} fade-up">
+    <div class="job-head">
+      <strong>{{ job.label }}</strong>
+      <span class="chip {{ 'warn' if job.state == 'paused' else 'accent' }}">{{ t('job.' ~ job.state) }}</span>
+      {% if job.phase %}<span class="chip outline">{{ t('job.phase.' ~ job.phase) }}</span>{% endif %}
+      <span class="spacer">
+        <form class="inline" method="post"
+              action="/jobs/{{ job.id }}/{{ 'resume' if job.state == 'paused' else 'pause' }}">
+          <button class="quiet icon-only" title="{{ t('job.resume') if job.state == 'paused' else t('job.pause') }}">
+            {{ ui.icon('play' if job.state == 'paused' else 'pause', 15) }}</button>
+        </form>
+        <form class="inline" method="post" action="/jobs/{{ job.id }}/cancel">
+          <button class="quiet icon-only danger" title="{{ t('job.cancel') }}">{{ ui.icon('close', 15) }}</button>
+        </form>
+      </span>
     </div>
-  {% endfor %}
-{% endif %}
+    <div class="meter {{ 'is-running' if job.state == 'running' }}">
+      <span style="width: {{ job.percent }}%"></span>
+    </div>
+    <div class="job-meta">
+      <span>{{ job.percent }} %</span>
+      {% if job.bytes_total %}<span>{{ job.bytes_done|bytes }} / {{ job.bytes_total|bytes }}</span>{% endif %}
+      {% if job.files_total %}<span>{{ job.files_done|thousands }} / {{ job.files_total|thousands }}</span>{% endif %}
+      {% if job.current_path %}<span class="path">{{ job.current_path }}</span>{% endif %}
+    </div>
+  </div>
+{% endfor %}
