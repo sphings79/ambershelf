@@ -77,8 +77,19 @@
         <input type="checkbox" name="verify_after_copy" value="1"
                {{ 'checked' if values.verify_after_copy not in ('0', '') }}>
         {{ t('settings.verify_after_copy') }}</label>
+      <label class="check">
+        <input type="checkbox" name="keep_mtime" value="1"
+               {{ 'checked' if values.keep_mtime not in ('0', '') }}>
+        {{ t('settings.keep_mtime') }}</label>
       <label class="field"><span>{{ t('settings.assignment_depth') }}</span>
         <input type="number" min="1" max="4" name="assignment_depth" value="{{ values.assignment_depth }}"></label>
+      <label class="field"><span>{{ t('settings.delete_mode') }}</span>
+        <select name="delete_mode">
+          <option value="trash" {{ 'selected' if values.delete_mode == 'trash' }}>
+            {{ t('settings.delete_mode.trash') }}</option>
+          <option value="remove" {{ 'selected' if values.delete_mode == 'remove' }}>
+            {{ t('settings.delete_mode.remove') }}</option>
+        </select></label>
     </div>
     <div class="actions" style="margin-top:18px">
       <button class="primary">{{ ui.icon('check', 15) }} {{ t('common.save') }}</button>

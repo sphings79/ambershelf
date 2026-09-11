@@ -31,6 +31,7 @@ EXCLUDED_DIRS = {
     ".temporaryitems",
     "found.000",
     ".ambersync",
+    ".ambersync-trash",
 }
 EXCLUDED_FILES = {
     ".ds_store",
@@ -43,6 +44,13 @@ EXCLUDED_FILES = {
 EXCLUDED_PREFIXES = ("._",)
 # Our own half-written files, should a run ever be interrupted.
 TEMP_SUFFIX = ".ambersync-part"
+
+# Where replaced and deleted files are parked on the copy. Keeping them costs
+# space; losing them by accident costs more.
+TRASH_DIR = ".ambersync-trash"
+
+# Read and write in blocks this size while copying.
+COPY_BLOCK_SIZE = 4 * 1024 * 1024
 
 # Defaults for the brake. Stored in the database on first start and editable
 # in the user interface afterwards.
@@ -61,5 +69,9 @@ DEFAULT_SETTINGS = {
     "slave_free_space_gb": "10",
     "detect_renames": "1",
     "verify_after_copy": "1",
+    # "trash" parks removed and replaced files under .ambersync-trash on the
+    # copy; "remove" deletes them for good.
+    "delete_mode": "trash",
+    "keep_mtime": "1",
     "assignment_depth": "2",
 }

@@ -70,10 +70,11 @@ def templates_have_their_keys() -> None:
     expanded = {
         "role.": ("master", "slave"),
         "job.": ("queued", "running", "paused", "done", "failed", "cancelled"),
-        "job.phase.": ("walk", "hash", "scope", "compare"),
-        "plan.kind.": ("new", "changed", "renamed", "slave_only",
+        "job.phase.": ("walk", "hash", "scope", "compare", "apply"),
+        "plan.kind.": ("new", "changed", "renamed", "deleted", "slave_only",
                        "out_of_scope", "unreadable"),
-        "plan.state.": ("building", "ready", "blocked", "cancelled"),
+        "plan.state.": ("building", "ready", "blocked", "cancelled", "applied"),
+        "run.state.": ("running", "done", "done_with_errors", "failed", "cancelled"),
     }
     for prefix, values in expanded.items():
         for value in values:

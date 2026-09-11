@@ -35,13 +35,21 @@
 {% else %}
 
 {% set brake = plan.summary.get('brake') %}
-{% if brake and brake.tripped %}
+{% if brake and brake.tripped and plan.state == 'blocked' %}
   <div class="note error">
     <span class="note-icon">{{ ui.icon('brake', 18) }}</span>
-    <div>
+    <div style="flex:1">
       <strong>{{ t('plan.brake.title') }}</strong>
       <ul>{% for r in brake.reasons %}<li>{{ msg_of(r) }}</li>{% endfor %}</ul>
       <p>{{ t('plan.brake.body') }}</p>
+      <form class="actions" method="post" action="/sets/{{ set_name }}/plan/{{ plan.id }}/release"
+            style="margin-top:10px">
+        <label class="field" style="flex:0 0 auto">
+          <span>{{ t('plan.brake.confirm', number=brake.confirm_number) }}</span>
+          <input name="confirm" inputmode="numeric" autocomplete="off" size="8" required>
+        </label>
+        <button class="danger" style="align-self:flex-end">{{ t('plan.brake.release') }}</button>
+      </form>
     </div>
   </div>
 {% endif %}
@@ -49,10 +57,31 @@
 <section class="card">
   <div class="card-head">
     <h2>{{ t('plan.result') }}</h2>
-    <span class="chip {{ 'danger' if plan.state == 'blocked' else 'ok' }}">
+    <span class="chip {{ 'danger' if plan.state == 'blocked' else ('ok' if plan.state == 'ready' else '') }}">
       {{ t('plan.state.' ~ plan.state) }}</span>
     <span class="chip outline">{{ plan.created_at|dt }}</span>
+    {% if pending %}
+      <span class="chip warn">{{ ui.icon('alert', 12) }}
+        {{ t('plan.pending', count=pending|thousands) }}</span>
+    {% endif %}
+
+    <div class="actions">
+      {% if plan.state in ('ready', 'blocked') %}
+        <form class="inline" method="post" action="/sets/{{ set_name }}/plan/{{ plan.id }}/apply">
+          <button class="primary" {{ 'disabled' if plan.state == 'blocked' or not selected }}>
+            {{ ui.icon('play', 15) }}
+            {{ t('plan.apply', count=selected|thousands) }}</button>
+        </form>
+      {% endif %}
+    </div>
   </div>
+
+  {% if plan.state == 'ready' and selected %}
+    <div class="note warn">
+      <span class="note-icon">{{ ui.icon('alert', 18) }}</span>
+      <div>{{ t('plan.apply.help', count=selected|thousands) }}</div>
+    </div>
+  {% endif %}
 
   {% for slave_id, s in plan.summary.get('slaves', {}).items() %}
     <div class="slave-block">
@@ -98,6 +127,18 @@
     </div>
     <p class="muted small" style="margin-top:-6px">{{ t('plan.kind.' ~ kind ~ '.help') }}</p>
 
+    {% if kind in needs_approval %}
+      <form class="actions" method="post"
+            action="/sets/{{ set_name }}/plan/{{ plan.id }}/decide" style="margin-bottom:12px">
+        <input type="hidden" name="kind" value="{{ kind }}">
+        {% if slave %}<input type="hidden" name="slave" value="{{ slave }}">{% endif %}
+        <span class="small muted">{{ t('plan.decide.all') }}</span>
+        <button name="decision" value="approve">{{ ui.icon('check', 14) }} {{ t('plan.decide.approve') }}</button>
+        <button name="decision" value="skip_once">{{ t('plan.decide.skip_once') }}</button>
+        <button name="decision" value="skip_forever">{{ t('plan.decide.skip_forever') }}</button>
+      </form>
+    {% endif %}
+
     {% if not items %}
       <p class="muted" style="margin:0">{{ t('plan.nothing') }}</p>
     {% else %}
@@ -108,19 +149,43 @@
               <th>{{ t('common.path') }}</th>
               <th class="num">{{ t('common.size') }}</th>
               <th>{{ t('common.disk') }}</th>
+              {% if kind in needs_approval %}<th>{{ t('plan.decide') }}</th>{% endif %}
             </tr>
           </thead>
           <tbody>
           {% for i in items %}
+            {% set decision = decisions.get((i.slave_disk_id, i.kind, i.path)) %}
             <tr>
               <td class="mono">
                 {{ i.path }}
                 {% if i.other_path %}
                   <div class="faint small">{{ ui.icon('refresh', 11) }} {{ i.other_path }}</div>
                 {% endif %}
+                {% if i.flags == 'copy_modified' %}
+                  <div class="warn small">{{ ui.icon('alert', 11) }} {{ t('plan.copy_modified') }}</div>
+                {% endif %}
               </td>
               <td class="num">{{ i.size|bytes }}</td>
               <td class="small muted">{{ slaves.get(i.slave_disk_id, {}).get('display_name', '?') }}</td>
+              {% if kind in needs_approval %}
+                <td>
+                  <form class="actions" method="post"
+                        action="/sets/{{ set_name }}/plan/{{ plan.id }}/decide">
+                    <input type="hidden" name="kind" value="{{ i.kind }}">
+                    <input type="hidden" name="slave" value="{{ i.slave_disk_id }}">
+                    <input type="hidden" name="path" value="{{ i.path }}">
+                    <button class="quiet icon-only {{ 'on-approve' if decision == 'approve' }}"
+                            name="decision" value="approve"
+                            title="{{ t('plan.decide.approve') }}">{{ ui.icon('check', 14) }}</button>
+                    <button class="quiet icon-only {{ 'on-skip' if decision == 'skip_once' }}"
+                            name="decision" value="skip_once"
+                            title="{{ t('plan.decide.skip_once') }}">{{ ui.icon('refresh', 14) }}</button>
+                    <button class="quiet icon-only {{ 'on-never' if decision == 'skip_forever' }}"
+                            name="decision" value="skip_forever"
+                            title="{{ t('plan.decide.skip_forever') }}">{{ ui.icon('close', 14) }}</button>
+                  </form>
+                </td>
+              {% endif %}
             </tr>
           {% endfor %}
           </tbody>

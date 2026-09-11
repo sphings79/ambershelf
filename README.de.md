@@ -49,9 +49,14 @@ angesteckt, zwischen Mac und Windows-PC getragen, den Rest der Zeit im Schrank.
 | --- | --- |
 | <img src="docs/screenshots/overview-light.png" alt="AmberSync Übersicht im hellen Erscheinungsbild mit Plattenkarten, Belegungsbalken und Verzeichnisstand" width="420"> | <img src="docs/screenshots/split-light.png" alt="AmberSync Aufteilung: Ordner eines Fotoarchivs werden zwei Sicherungsplatten zugeteilt, mit Belegungsbalken" width="420"> |
 
-**Die Vorschau mit ausgelöster Notbremse** — es wird nichts ausgeführt, bis du entschieden hast:
+**Die Vorschau** — es wird nichts ausgeführt, bis du entschieden hast:
 
-<img src="docs/screenshots/preview-dark.png" alt="AmberSync Vorschau mit neuen, geänderten, umbenannten und nur auf der Kopie vorhandenen Dateien; die Notbremse sperrt den Lauf, weil 18 Prozent des Bestands ersetzt würden" width="880">
+<img src="docs/screenshots/preview-dark.png" alt="AmberSync Vorschau mit neuen, geänderten, umbenannten, gelöschten und nur auf der Kopie vorhandenen Dateien je Sicherungsplatte" width="880">
+
+**Jede Ersetzung, Umbenennung und Löschung gibst du frei** — einzeln oder gesammelt, und
+die Antwort wird gemerkt:
+
+<img src="docs/screenshots/approvals-dark.png" alt="AmberSync Freigabeliste: jede geänderte Datei lässt sich freigeben, diesmal übergehen oder nie wieder fragen, mit dem Hinweis, dass die Kopie selbst verändert wurde und nicht der Master" width="880">
 
 **Hell, dunkel und System, fünf Akzentfarben:**
 
@@ -64,8 +69,16 @@ angesteckt, zwischen Mac und Windows-PC getragen, den Rest der Zeit im Schrank.
   bevor ein einziges Byte gelesen wird. Auch ein Programmierfehler oder jemand, der den
   Container übernimmt, kommt an dein Original nicht heran.
 - **Gegen Verschlüsselungstrojaner gebaut.** Nichts wird ohne deine Freigabe gelöscht oder
-  überschrieben, und eine Massenersetzung löst eine einstellbare Notbremse aus — nach
-  absoluter Zahl **und** nach Anteil am Bestand.
+  überschrieben, und eine Massenersetzung oder -löschung löst eine einstellbare Notbremse
+  aus — nach absoluter Zahl **und** nach Anteil am Bestand. Zum Lösen musst du die Zahl
+  der betroffenen Dateien eintippen; wegklicken geht nicht.
+- **Jede Kopie wird bewiesen.** Jede Datei wird unter Temporärnamen geschrieben, auf die
+  Platte gezwungen, zurückgelesen und geprüft — erst dann umbenannt. Ein abgebrochener
+  Lauf hinterlässt eine Temporärdatei, nie ein halbes Foto unter dem richtigen Namen.
+- **Ersetzte und gelöschte Dateien werden geparkt**, nicht vernichtet — unter
+  `.ambersync-trash` auf der Kopie, mit dem Zeitstempel des Laufs, bis du selbst aufräumst.
+- **Entscheidungen werden gemerkt.** Freigeben, diesmal übergehen oder nie wieder fragen;
+  du arbeitest die Altlasten einmal ab statt bei jedem Lauf dieselben fünfzig Fälle.
 - **Plattenerkennung, die von innen nicht zu fälschen ist.** Eine Platte wird über
   Dateisystem-UUID und Seriennummer erkannt; die Zuordnung von Platte zu Rolle liegt in
   einer root-eigenen Datei auf dem Host, außerhalb der Reichweite des Containers. Ein
@@ -189,7 +202,9 @@ weniger Kontrolle über jeden einzelnen Schritt.
 **Kann es Dateien auf der Kopie löschen?**
 Nur solche, die du freigibst, einzeln oder gesammelt — und erst, wenn AmberSync selbst
 einmal auf diese Kopie geschrieben hat. Vorher lässt sich eine gelöschte Datei nicht von
-einer unterscheiden, die nie da war. Das sagt es, statt zu raten.
+einer unterscheiden, die nie da war; das sagt es, statt zu raten. Gelöschte Dateien landen
+standardmäßig unter `.ambersync-trash` auf der Kopie — eine bereute Freigabe ist also
+umkehrbar.
 
 **Wie lange dauert der erste Lauf?**
 Er liest und prüfsummt alles. Rechne grob mit 4 bis 8 Stunden je Terabyte über USB 3, je
@@ -213,12 +228,14 @@ Netzfreigabe nicht.
 | --- | --- | --- |
 | 1 | Host-Helfer, Registrierung, Einhängen | ✅ fertig |
 | 2 | Einlesen, Prüfsummen, Vergleich, Vorschau | ✅ fertig |
-| 3 | Kopieren mit Prüfung, Freigaben, Verlauf | 🚧 als Nächstes |
+| 3 | Kopieren mit Prüfung, Freigaben, Verlauf | ✅ fertig |
 | 4 | Aufteilung auf mehrere Kopien, Deckungsprüfung | ✅ fertig |
 | 5 | Trojaner-Erkennung, Benachrichtigungen | Umbenennungen fertig, Rest geplant |
+| 6 | Desktop-Apps für macOS und Windows | 🚧 als Nächstes |
 
-> **Aktueller Stand: es liest, vergleicht und zeigt. Es schreibt noch nicht auf eine
-> Datenplatte.** Abschnitt 3 bringt die schreibende Hälfte.
+> **Aktueller Stand: der Ablauf ist vollständig.** Die Desktop-Apps werden die Quelle
+> nicht schreibschützen können — das bietet keines der beiden Systeme ohne
+> Administratorrechte — und sagen das auf jeder Seite, statt es vorzugeben.
 
 ## Mitmachen
 

@@ -341,6 +341,12 @@ button:disabled, .button:disabled { opacity: .45; cursor: not-allowed; }
 button.icon-only { padding: 7px; }
 
 form.inline { display: inline-flex; }
+
+/* Which answer a case currently carries. */
+button.on-approve { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
+button.on-skip { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+button.on-never { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+td .actions { gap: 4px; flex-wrap: nowrap; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 /* ---------------------------------------------------------------- inputs */
@@ -434,22 +440,24 @@ tr.row-uncovered td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
 
 /* -------------------------------------------------------------- plan bits */
 
-.tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); }
+/* Seven kinds have to fit on one line on a normal screen, and wrap cleanly
+   when they cannot. */
+.tiles { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(116px, 1fr)); }
 .tile {
   border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 13px 15px; background: var(--surface-1); color: var(--text); display: block;
+  padding: 12px 13px; background: var(--surface-1); color: var(--text); display: block;
   transition: border-color .15s, transform .08s;
 }
 .tile:hover { border-color: var(--border-strong); text-decoration: none; }
 .tile:active { transform: translateY(1px); }
 .tile.on { border-color: var(--accent); background: var(--accent-soft); }
 .tile.empty { opacity: .5; }
-.tile .count { display: block; font-size: 24px; font-weight: 650; line-height: 1.1;
+.tile .count { display: block; font-size: 22px; font-weight: 650; line-height: 1.1;
   font-variant-numeric: tabular-nums; }
 .tile .label { display: block; font-size: 12.5px; margin-top: 2px; }
 .tile .size { display: block; font-size: 11px; color: var(--text-faint); }
 .tile.new .count { color: var(--ok); }
-.tile.changed .count, .tile.unreadable .count { color: var(--danger); }
+.tile.changed .count, .tile.unreadable .count, .tile.deleted .count { color: var(--danger); }
 .tile.renamed .count { color: var(--warn); }
 .tile.empty .count { color: var(--text-faint); }
 

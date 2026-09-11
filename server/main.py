@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from engine import apply as apply_engine
 from engine import compare, config, db, fsutil, planner, scanner
 from engine.jobs import manager
 from platforms import BackendError, backend
@@ -121,10 +122,15 @@ def context(request: Request, **extra) -> dict:
             **{state: translate(f"job.{state}")
                for state in ("queued", "running", "paused", "done", "failed", "cancelled")},
             **{f"phase.{phase}": translate(f"job.phase.{phase}")
-               for phase in ("walk", "hash", "scope", "compare")},
+               for phase in ("walk", "hash", "scope", "compare", "apply")},
         }, ensure_ascii=False),
     }
     base.update(extra)
+    # Routes hand back short keys for anything they say themselves, so the
+    # message ends up in the reader's language rather than the engine's.
+    message = base.get("msg")
+    if isinstance(message, str) and message in i18n.STRINGS.get(language, {}):
+        base["msg"] = translate(message)
     return base
 
 
@@ -327,18 +333,116 @@ def plan_page(request: Request, set_name: str):
     offset = int(request.query_params.get("offset") or 0)
 
     items = []
-    if plan and kind:
-        items = compare.plan_items(plan["id"], kind, int(slave) if slave else None,
-                                   offset=offset, limit=200)
+    decisions = {}
+    pending = 0
+    selected = 0
+    if plan:
+        pending = apply_engine.pending_approvals(plan["id"], set_name)
+        selected = sum(len(rows) for by_kind in
+                       apply_engine.selected_items(plan["id"], set_name).values()
+                       for rows in by_kind.values())
+        if kind:
+            items = compare.plan_items(plan["id"], kind, int(slave) if slave else None,
+                                       offset=offset, limit=200)
+            decisions = db.remembered_decisions(set_name)
 
     slaves = {row["id"]: dict(row) for row in db.slaves_of_set(set_name)}
     return render("plan.html", request, set_name=set_name, plan=detail, items=items,
                   kind=kind, slave=slave, offset=offset, slaves=slaves,
+                  decisions=decisions, pending=pending, selected=selected,
                   readiness=compare.readiness(set_name),
-                  kinds=[compare.NEW, compare.CHANGED, compare.RENAMED,
+                  needs_approval=compare.NEEDS_APPROVAL,
+                  kinds=[compare.NEW, compare.CHANGED, compare.RENAMED, compare.DELETED,
                          compare.SLAVE_ONLY, compare.OUT_OF_SCOPE, compare.UNREADABLE],
                   msg=request.query_params.get("msg"),
                   level=request.query_params.get("level", "info"))
+
+
+@app.post("/sets/{set_name}/plan/{plan_id}/decide")
+async def decide(request: Request, set_name: str, plan_id: int):
+    """Answer one case, or every case of one kind at once."""
+    form = await request.form()
+    decision = str(form.get("decision") or "")
+    if decision not in ("approve", "skip_once", "skip_forever", "forget"):
+        return flash(request, f"/sets/{set_name}/plan", "unknown decision", "error")
+
+    kind = str(form.get("kind") or "")
+    slave_id = int(form["slave"]) if form.get("slave") else None
+    path = form.get("path")
+
+    if path:
+        db.remember_decision(set_name, slave_id, str(path), kind, decision)
+        count = 1
+    else:
+        # Bulk: everything of this kind, for this copy or for all of them.
+        where = ["plan_id = ?", "kind = ?"]
+        params: list = [plan_id, kind]
+        if slave_id:
+            where.append("slave_disk_id = ?")
+            params.append(slave_id)
+        rows = db.query(f"SELECT slave_disk_id, path FROM plan_items "
+                        f"WHERE {' AND '.join(where)}", params)
+        for row in rows:
+            db.remember_decision(set_name, row["slave_disk_id"], row["path"],
+                                 kind, decision)
+        count = len(rows)
+
+    db.log_event("info", f"{count} × {kind}: {decision}", set_name, "decide")
+    target = f"/sets/{set_name}/plan?kind={kind}"
+    if slave_id:
+        target += f"&slave={slave_id}"
+    return flash(request, target, f"{count}", "ok")
+
+
+@app.post("/sets/{set_name}/plan/{plan_id}/release")
+def release_brake(request: Request, set_name: str, plan_id: int,
+                  confirm: str = Form("")):
+    """Lift the brake - only against the number the user had to read first."""
+    detail = compare.plan_summary(plan_id)
+    if detail is None or detail["state"] != "blocked":
+        return flash(request, f"/sets/{set_name}/plan", "nothing to release", "error")
+
+    expected = str(detail["summary"].get("brake", {}).get("confirm_number", ""))
+    if confirm.strip() != expected:
+        db.log_event("warning", f"plan {plan_id}: release refused, wrong number",
+                     set_name, "brake")
+        return flash(request, f"/sets/{set_name}/plan", "brake.wrong_number", "error")
+
+    db.execute("UPDATE plans SET state = 'ready' WHERE id = ?", (plan_id,))
+    db.log_event("warning", f"plan {plan_id}: brake released by hand", set_name, "brake")
+    return flash(request, f"/sets/{set_name}/plan", "brake.released", "ok")
+
+
+@app.post("/sets/{set_name}/plan/{plan_id}/apply")
+async def apply_plan(request: Request, set_name: str, plan_id: int):
+    if manager.busy_with() is not None:
+        return flash(request, f"/sets/{set_name}/plan", "something else is running",
+                     "error")
+    form = await request.form()
+    only = form.get("kinds")
+    kinds = tuple(str(only).split(",")) if only else None
+
+    try:
+        apply_engine.precheck(plan_id, kinds)
+    except apply_engine.ApplyRefused as exc:
+        return flash(request, f"/sets/{set_name}/plan", str(exc), "error")
+
+    manager.submit("apply", set_name,
+                   lambda job: apply_engine.apply_plan(job, plan_id, kinds),
+                   set_name=set_name)
+    return flash(request, f"/sets/{set_name}/plan", "apply.started", "ok")
+
+
+@app.get("/runs/{run_id}", response_class=HTMLResponse)
+def run_page(request: Request, run_id: int):
+    run = apply_engine.run_summary(run_id)
+    if run is None:
+        return RedirectResponse("/events", status_code=303)
+    state = request.query_params.get("state")
+    offset = int(request.query_params.get("offset") or 0)
+    slaves = {row["id"]: dict(row) for row in db.query("SELECT * FROM disks")}
+    return render("run.html", request, run=run, slaves=slaves, state=state, offset=offset,
+                  items=apply_engine.run_items(run_id, state, offset=offset))
 
 
 # -------------------------------------------------------------- assignment --
@@ -431,6 +535,7 @@ def job_action(request: Request, job_id: int, action: str):
 def events_page(request: Request):
     return render("events.html", request,
                   events=db.query("SELECT * FROM events ORDER BY id DESC LIMIT 300"),
+                  runs=apply_engine.recent_runs(limit=25),
                   scans=db.query(
                       "SELECT s.*, d.display_name FROM scans s "
                       "JOIN disks d ON d.id = s.disk_id ORDER BY s.id DESC LIMIT 50"))
@@ -452,7 +557,7 @@ async def settings_save(request: Request):
     for key in config.DEFAULT_SETTINGS:
         if key in form:
             db.set_setting(key, str(form[key]).strip())
-        elif key in ("detect_renames", "verify_after_copy"):
+        elif key in ("detect_renames", "verify_after_copy", "keep_mtime"):
             db.set_setting(key, "0")      # unchecked boxes are simply absent
     return flash(request, "/settings", "saved", "ok")
 

@@ -47,9 +47,14 @@ carried between a Mac and a Windows PC, sitting in a drawer the rest of the time
 | --- | --- |
 | <img src="docs/screenshots/overview-light.png" alt="AmberSync overview in light mode with disk cards, capacity meters and index state" width="420"> | <img src="docs/screenshots/split-light.png" alt="AmberSync split screen assigning folders of a photo archive to two backup drives with capacity bars" width="420"> |
 
-**The preview, with the brake tripped** — nothing is carried out until you decide:
+**The preview** — nothing is carried out until you decide:
 
-<img src="docs/screenshots/preview-dark.png" alt="AmberSync preview showing new, changed, renamed and copy-only files, with the brake blocking the run because 18 percent of the archive would be replaced" width="880">
+<img src="docs/screenshots/preview-dark.png" alt="AmberSync preview showing new, changed, renamed, deleted and copy-only files per backup drive" width="880">
+
+**Every replacement, rename and deletion is yours to allow** — one by one or in
+bulk, and the answer is remembered:
+
+<img src="docs/screenshots/approvals-dark.png" alt="AmberSync approval list: each changed file can be approved, skipped once or never asked about again, with a warning that the copy itself was altered rather than the master" width="880">
 
 **Light, dark and system theme, five accent colours:**
 
@@ -61,8 +66,16 @@ carried between a Mac and a Windows PC, sitting in a drawer the rest of the time
   there" — the filesystem is mounted `ro` and the flags are read back before a single byte
   is read. A bug, or somebody who owns the container, still cannot write to your original.
 - **Ransomware-resistant by design.** Nothing is ever deleted or overwritten without your
-  approval, and a mass replacement trips a configurable brake — by absolute count *and* by
-  share of the archive.
+  approval, and a mass replacement or deletion trips a configurable brake — by absolute
+  count *and* by share of the archive. Releasing a tripped brake means typing the number
+  of affected files, so it cannot be clicked past.
+- **Every copy is proved.** Each file is written to a temporary name, flushed to the
+  platter, read back and hashed, and only then renamed into place. An interrupted run
+  leaves a stray temporary file, never half a photo under the right name.
+- **Replaced and deleted files are parked**, not destroyed — under `.ambersync-trash` on
+  the copy, with the timestamp of the run, until you clear them out yourself.
+- **Decisions are remembered.** Approve, skip once, or never ask again; you work through
+  the backlog once instead of meeting the same fifty cases every run.
 - **Disk identity that cannot be faked from inside.** A drive is recognised by its
   filesystem UUID and serial; the mapping from drive to role lives in a root-owned file on
   the host, outside the container's reach. Renaming a folder or cloning a disk cannot flip
@@ -181,7 +194,8 @@ rsync means reimplementing most of this anyway, with less control over each step
 **Can it delete files on the copy?**
 Only ones you approve, one by one or in bulk, and only once AmberSync itself has written
 to that copy — before that there is no way to tell a deleted file from one that was never
-there. It says so rather than guessing.
+there, and it says so rather than guessing. Deleted files are moved to
+`.ambersync-trash` on the copy by default, so an approval you regret is still reversible.
 
 **How long does the first run take?**
 It reads and hashes everything. Expect roughly 4–8 hours per terabyte over USB 3,
@@ -205,12 +219,13 @@ does not have.
 | --- | --- | --- |
 | 1 | Host helper, disk registration, mounting | ✅ done |
 | 2 | Indexing, hashing, comparison, preview | ✅ done |
-| 3 | Copying with verification, approvals, history | 🚧 next |
+| 3 | Copying with verification, approvals, history | ✅ done |
 | 4 | Splitting across several copies, coverage checks | ✅ done |
 | 5 | Ransomware heuristics, notifications | rename detection done, rest planned |
+| 6 | macOS and Windows desktop builds | 🚧 next |
 
-> **Current status: it reads, compares and shows. It does not write to a data disk yet.**
-> Stage 3 adds the writing half.
+> The desktop builds will not hold the source read-only — neither system offers that
+> without administrator rights — so they say so on every page instead of pretending.
 
 ## Contributing
 

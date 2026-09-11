@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ui %}
+{% block title %}{{ t('run.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('run.title') }} #{{ run.id }}</h1>
+    <div class="sub">{{ run.set_name }} · {{ run.started_at|dt }}</div>
+  </div>
+  <div class="actions">
+    <a class="button quiet" href="/events">{{ ui.icon('history', 15) }} {{ t('nav.events') }}</a>
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>{{ t('plan.result') }}</h2>
+    <span class="chip {{ 'ok' if run.state == 'done' else ('danger' if run.failed else 'warn') }}">
+      {{ t('run.state.' ~ run.state) }}</span>
+    {% if run.finished_at %}<span class="chip outline">{{ run.finished_at|dt }}</span>{% endif %}
+  </div>
+
+  <div class="tiles">
+    <a class="tile new {{ 'empty' if not run.copied }}" href="?state=done">
+      <span class="count">{{ run.copied|thousands }}</span>
+      <span class="label">{{ t('run.copied') }}</span></a>
+    <a class="tile changed {{ 'empty' if not run.replaced }}" href="?state=done">
+      <span class="count">{{ run.replaced|thousands }}</span>
+      <span class="label">{{ t('run.replaced') }}</span></a>
+    <a class="tile renamed {{ 'empty' if not run.renamed }}" href="?state=done">
+      <span class="count">{{ run.renamed|thousands }}</span>
+      <span class="label">{{ t('run.renamed') }}</span></a>
+    <a class="tile changed {{ 'empty' if not run.deleted }}" href="?state=done">
+      <span class="count">{{ run.deleted|thousands }}</span>
+      <span class="label">{{ t('run.deleted') }}</span></a>
+    <a class="tile unreadable {{ 'empty' if not run.failed }}" href="?state=failed">
+      <span class="count">{{ run.failed|thousands }}</span>
+      <span class="label">{{ t('run.failed') }}</span></a>
+    <div class="tile empty">
+      <span class="count">{{ run.bytes|bytes }}</span>
+      <span class="label">{{ t('run.written') }}</span></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>{{ t('run.items') }}</h2>
+    <div class="actions">
+      <a class="button {{ 'primary' if not state }}" href="/runs/{{ run.id }}">{{ t('run.all') }}</a>
+      <a class="button {{ 'primary' if state == 'failed' }}" href="/runs/{{ run.id }}?state=failed">{{ t('run.failed') }}</a>
+    </div>
+  </div>
+
+  {% if not items %}
+    <p class="muted" style="margin:0">{{ t('plan.nothing') }}</p>
+  {% else %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{{ t('common.path') }}</th>
+            <th>{{ t('common.state') }}</th>
+            <th class="num">{{ t('common.size') }}</th>
+            <th>{{ t('common.disk') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for i in items %}
+          <tr>
+            <td class="mono">
+              {{ i.path }}
+              {% if i.other_path %}<div class="faint small">{{ ui.icon('refresh', 11) }} {{ i.other_path }}</div>{% endif %}
+              {% if i.error %}<div class="danger small">{{ i.error }}</div>{% endif %}
+            </td>
+            <td>
+              <span class="chip {{ 'ok' if i.state == 'done' else 'danger' }}">
+                {{ t('plan.kind.' ~ i.kind) }}</span>
+            </td>
+            <td class="num">{{ i.size|bytes }}</td>
+            <td class="small muted">{{ slaves.get(i.slave_disk_id, {}).get('display_name', '?') }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="pager">
+      {% if offset > 0 %}
+        <a class="button" href="/runs/{{ run.id }}?state={{ state or '' }}&offset={{ offset - 200 }}">←</a>
+      {% endif %}
+      {% if items|length == 200 %}
+        <a class="button" href="/runs/{{ run.id }}?state={{ state or '' }}&offset={{ offset + 200 }}">→</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

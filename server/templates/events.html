@@ -33,6 +33,48 @@
 </section>
 
 <section class="card">
+  <div class="card-head"><h2>{{ t('events.runs') }}</h2></div>
+  {% if not runs %}
+    <p class="muted" style="margin:0">{{ t('events.no_runs') }}</p>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ t('run.title') }}</th>
+          <th>{{ t('common.state') }}</th>
+          <th class="num">{{ t('run.copied') }}</th>
+          <th class="num">{{ t('run.replaced') }}</th>
+          <th class="num">{{ t('run.renamed') }}</th>
+          <th class="num">{{ t('run.deleted') }}</th>
+          <th class="num">{{ t('run.failed') }}</th>
+          <th class="num">{{ t('run.written') }}</th>
+          <th>{{ t('overview.last_scan') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in runs %}
+        <tr>
+          <td><a href="/runs/{{ r.id }}"><strong>#{{ r.id }}</strong></a>
+            <div class="faint small">{{ r.set_name }}</div></td>
+          <td><span class="chip {{ 'ok' if r.state == 'done' else ('danger' if r.failed else 'warn') }}">
+            {{ t('run.state.' ~ r.state) }}</span></td>
+          <td class="num">{{ r.copied|thousands }}</td>
+          <td class="num">{{ r.replaced|thousands }}</td>
+          <td class="num">{{ r.renamed|thousands }}</td>
+          <td class="num">{{ r.deleted|thousands }}</td>
+          <td class="num {{ 'danger' if r.failed }}">{{ r.failed|thousands }}</td>
+          <td class="num">{{ r.bytes|bytes }}</td>
+          <td class="small muted">{{ r.finished_at|dt }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+
+<section class="card">
   <div class="card-head"><h2>{{ t('events.scans') }}</h2></div>
   <div class="table-wrap">
     <table>

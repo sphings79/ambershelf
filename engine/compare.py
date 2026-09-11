@@ -21,9 +21,16 @@ from platforms import backend
 NEW = "new"                  # on the master, missing on this slave -> copy
 CHANGED = "changed"          # both sides have it, contents differ -> ask
 RENAMED = "renamed"          # same contents, different path -> ask
-SLAVE_ONLY = "slave_only"    # only on the slave, not on the master -> report
+DELETED = "deleted"          # we put it here, the master no longer has it -> ask
+SLAVE_ONLY = "slave_only"    # only on the slave, never came from us -> report
 OUT_OF_SCOPE = "out_of_scope"  # on the master, but assigned to another slave
 UNREADABLE = "unreadable"    # could not be read while scanning -> report
+
+#: Kinds that never happen without the user saying so, one by one.
+NEEDS_APPROVAL = (CHANGED, RENAMED, DELETED)
+
+#: Marks a changed file whose *copy* was altered, not the master.
+COPY_MODIFIED = "copy_modified"
 
 UNREADABLE_MARKER = "unreadable"
 
@@ -152,9 +159,18 @@ def compare_one(connection, plan_id: int, master_id: int, slave,
     slave_id = slave["id"]
     items: list[tuple] = []
 
+    # What AmberSync itself put on this copy. A file that is in here and gone
+    # from the master was deleted; one that is not was never ours to judge.
+    written = {
+        row[0]: row[1]
+        for row in connection.execute(
+            "SELECT path, sha256 FROM synced WHERE slave_disk_id = ?", (slave_id,))
+    }
+
     def add(kind: str, path: str, size: int, master_sha=None, slave_sha=None,
-            other_path=None) -> None:
-        items.append((plan_id, slave_id, kind, path, other_path, size, master_sha, slave_sha))
+            other_path=None, flags=None) -> None:
+        items.append((plan_id, slave_id, kind, path, other_path, size,
+                      master_sha, slave_sha, flags))
 
     # -- on the master, missing here -----------------------------------------
     new_by_sha: dict[str, list[tuple[str, int]]] = {}
@@ -187,7 +203,11 @@ def compare_one(connection, plan_id: int, master_id: int, slave,
         if UNREADABLE_MARKER in (master_sha, slave_sha):
             add(UNREADABLE, path, size, master_sha=master_sha, slave_sha=slave_sha)
         else:
-            add(CHANGED, path, size, master_sha=master_sha, slave_sha=slave_sha)
+            # If the copy no longer holds what we wrote, the copy was altered -
+            # worth saying, because it is a different story from a changed master.
+            altered = written.get(path) not in (None, slave_sha)
+            add(CHANGED, path, size, master_sha=master_sha, slave_sha=slave_sha,
+                flags=COPY_MODIFIED if altered else None)
 
     # -- here but not expected here ------------------------------------------
     renamed_paths: set[str] = set()
@@ -220,7 +240,12 @@ def compare_one(connection, plan_id: int, master_id: int, slave,
                 new_by_sha.pop(slave_sha, None)
                 continue
 
-        add(SLAVE_ONLY, path, size, slave_sha=slave_sha)
+        if path in written:
+            # We put this here and the master does not have it any more.
+            add(DELETED, path, size, slave_sha=slave_sha,
+                flags=COPY_MODIFIED if written[path] != slave_sha else None)
+        else:
+            add(SLAVE_ONLY, path, size, slave_sha=slave_sha)
 
     # -- whatever is left really is new --------------------------------------
     for sha, entries in new_by_sha.items():
@@ -231,7 +256,7 @@ def compare_one(connection, plan_id: int, master_id: int, slave,
     connection.execute("BEGIN")
     connection.executemany(
         "INSERT INTO plan_items (plan_id, slave_disk_id, kind, path, other_path, "
-        "size, master_sha, slave_sha) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", items)
+        "size, master_sha, slave_sha, flags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", items)
     connection.execute("COMMIT")
 
     counts: dict[str, dict[str, int]] = {}
@@ -250,6 +275,7 @@ def compare_one(connection, plan_id: int, master_id: int, slave,
     return {
         "display_name": slave["display_name"],
         "counts": counts,
+        "ever_written": bool(written),
         "free_bytes": free,
         "needed_bytes": needed,
         "fits": free - needed >= db.get_int("slave_free_space_gb") * 1024**3,
@@ -257,33 +283,46 @@ def compare_one(connection, plan_id: int, master_id: int, slave,
 
 
 def evaluate_brake(set_name: str, summary: dict, master_id: int) -> dict:
-    """Decide whether this plan may proceed without a second look."""
+    """Decide whether this plan may proceed without a second look.
+
+    Two limits per category, absolute and proportional, because neither alone
+    is enough: forty files out of two hundred is a catastrophe and forty out
+    of a million is a Tuesday.
+    """
     total_master_files = db.scalar(
         "SELECT COUNT(*) FROM files WHERE disk_id = ?", (master_id,), 0) or 1
 
-    replace_count = sum(
-        values["counts"].get(CHANGED, {}).get("files", 0)
-        for values in summary["slaves"].values())
-    rename_count = sum(
-        values["counts"].get(RENAMED, {}).get("files", 0)
-        for values in summary["slaves"].values())
-    unreadable_count = sum(
-        values["counts"].get(UNREADABLE, {}).get("files", 0)
-        for values in summary["slaves"].values())
+    def total(kind: str) -> int:
+        return sum(values["counts"].get(kind, {}).get("files", 0)
+                   for values in summary["slaves"].values())
+
+    replace_count = total(CHANGED)
+    delete_count = total(DELETED)
+    rename_count = total(RENAMED)
+    unreadable_count = total(UNREADABLE)
 
     reasons: list[dict] = []
-    limit_absolute = db.get_int("brake_replace_absolute")
-    limit_percent = db.get_float("brake_replace_percent")
-    percent = replace_count * 100.0 / total_master_files
 
-    if replace_count > limit_absolute:
+    replace_percent = replace_count * 100.0 / total_master_files
+    if replace_count > db.get_int("brake_replace_absolute"):
         reasons.append({"key": "brake.replace_absolute",
                         "params": {"count": f"{replace_count:,}",
-                                   "limit": f"{limit_absolute:,}"}})
-    if percent > limit_percent:
+                                   "limit": f"{db.get_int('brake_replace_absolute'):,}"}})
+    if replace_percent > db.get_float("brake_replace_percent"):
         reasons.append({"key": "brake.replace_percent",
-                        "params": {"percent": f"{percent:.2f}",
-                                   "limit": limit_percent}})
+                        "params": {"percent": f"{replace_percent:.2f}",
+                                   "limit": db.get_float("brake_replace_percent")}})
+
+    delete_percent = delete_count * 100.0 / total_master_files
+    if delete_count > db.get_int("brake_delete_absolute"):
+        reasons.append({"key": "brake.delete_absolute",
+                        "params": {"count": f"{delete_count:,}",
+                                   "limit": f"{db.get_int('brake_delete_absolute'):,}"}})
+    if delete_percent > db.get_float("brake_delete_percent"):
+        reasons.append({"key": "brake.delete_percent",
+                        "params": {"percent": f"{delete_percent:.2f}",
+                                   "limit": db.get_float("brake_delete_percent")}})
+
     if unreadable_count:
         reasons.append({"key": "brake.unreadable",
                         "params": {"count": f"{unreadable_count:,}"}})
@@ -298,9 +337,13 @@ def evaluate_brake(set_name: str, summary: dict, master_id: int) -> dict:
         "tripped": bool(reasons),
         "reasons": reasons,
         "replace_count": replace_count,
+        "delete_count": delete_count,
         "rename_count": rename_count,
         "unreadable_count": unreadable_count,
-        "replace_percent": round(percent, 3),
+        "replace_percent": round(replace_percent, 3),
+        "delete_percent": round(delete_percent, 3),
+        # What the user has to type to release a blocked plan.
+        "confirm_number": replace_count + delete_count,
     }
 
 

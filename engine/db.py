@@ -118,6 +118,50 @@ CREATE TABLE IF NOT EXISTS plan_items (
 
 CREATE INDEX IF NOT EXISTS idx_plan_items ON plan_items (plan_id, kind, slave_disk_id);
 
+-- What AmberSync itself has written to a copy. Without this there is no way
+-- to tell a file that was deleted from the master from one that was never
+-- there in the first place - so deletions simply are not offered until a
+-- copy has been written to at least once.
+CREATE TABLE IF NOT EXISTS synced (
+    slave_disk_id INTEGER NOT NULL REFERENCES disks(id) ON DELETE CASCADE,
+    path          TEXT NOT NULL,
+    sha256        TEXT NOT NULL,
+    size          INTEGER NOT NULL DEFAULT 0,
+    synced_at     TEXT NOT NULL,
+    PRIMARY KEY (slave_disk_id, path)
+) WITHOUT ROWID;
+
+-- One application of a plan.
+CREATE TABLE IF NOT EXISTS runs (
+    id           INTEGER PRIMARY KEY,
+    plan_id      INTEGER REFERENCES plans(id) ON DELETE SET NULL,
+    set_name     TEXT NOT NULL,
+    started_at   TEXT NOT NULL,
+    finished_at  TEXT,
+    state        TEXT NOT NULL,
+    copied       INTEGER NOT NULL DEFAULT 0,
+    replaced     INTEGER NOT NULL DEFAULT 0,
+    renamed      INTEGER NOT NULL DEFAULT 0,
+    deleted      INTEGER NOT NULL DEFAULT 0,
+    failed       INTEGER NOT NULL DEFAULT 0,
+    bytes        INTEGER NOT NULL DEFAULT 0,
+    message      TEXT
+);
+
+CREATE TABLE IF NOT EXISTS run_items (
+    id            INTEGER PRIMARY KEY,
+    run_id        INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    slave_disk_id INTEGER NOT NULL,
+    kind          TEXT NOT NULL,
+    path          TEXT NOT NULL,
+    other_path    TEXT,
+    size          INTEGER NOT NULL DEFAULT 0,
+    state         TEXT NOT NULL,
+    error         TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_run_items ON run_items (run_id, state, kind);
+
 -- Remembered answers, so the same fifty cases are not asked again every run.
 CREATE TABLE IF NOT EXISTS decisions (
     id         INTEGER PRIMARY KEY,
@@ -319,3 +363,66 @@ def slaves_of_set(set_name: str) -> list[sqlite3.Row]:
 
 def all_sets() -> list[sqlite3.Row]:
     return query("SELECT * FROM sets ORDER BY name")
+
+
+# ------------------------------------------------------------------- runs --
+
+def start_run(set_name: str, plan_id: int) -> int:
+    cursor = execute(
+        "INSERT INTO runs (plan_id, set_name, started_at, state) VALUES (?, ?, ?, 'running')",
+        (plan_id, set_name, now()))
+    return int(cursor.lastrowid)
+
+
+def finish_run(run_id: int, state: str, message: str = "") -> None:
+    execute("UPDATE runs SET state = ?, finished_at = ?, message = ? WHERE id = ?",
+            (state, now(), message, run_id))
+
+
+def record_synced(slave_disk_id: int, path: str, sha256: str, size: int) -> None:
+    execute(
+        "INSERT INTO synced (slave_disk_id, path, sha256, size, synced_at) "
+        "VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT (slave_disk_id, path) DO UPDATE SET "
+        "sha256 = excluded.sha256, size = excluded.size, synced_at = excluded.synced_at",
+        (slave_disk_id, path, sha256, size, now()))
+
+
+def forget_synced(slave_disk_id: int, path: str) -> None:
+    execute("DELETE FROM synced WHERE slave_disk_id = ? AND path = ?",
+            (slave_disk_id, path))
+
+
+def has_been_written_to(slave_disk_id: int) -> bool:
+    """Whether AmberSync has ever written to this copy.
+
+    Everything about deletions hangs off this: before the first write there
+    is nothing to compare against, and guessing would be worse than saying so.
+    """
+    return bool(scalar("SELECT 1 FROM synced WHERE slave_disk_id = ? LIMIT 1",
+                       (slave_disk_id,), 0))
+
+
+# --------------------------------------------------------------- decisions --
+
+def remembered_decisions(set_name: str) -> dict:
+    """{(disk_id, kind, path): decision}"""
+    return {
+        (row["disk_id"], row["kind"], row["path"]): row["decision"]
+        for row in query("SELECT disk_id, kind, path, decision FROM decisions "
+                         "WHERE set_name = ?", (set_name,))
+    }
+
+
+def remember_decision(set_name: str, disk_id: int | None, path: str, kind: str,
+                      decision: str) -> None:
+    if decision == "forget":
+        execute("DELETE FROM decisions WHERE set_name = ? AND disk_id IS ? "
+                "AND path = ? AND kind = ?", (set_name, disk_id, path, kind))
+        return
+    execute(
+        "INSERT INTO decisions (set_name, disk_id, path, kind, decision, decided_at) "
+        "VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT (set_name, disk_id, path, kind) DO UPDATE SET "
+        "decision = excluded.decision, decided_at = excluded.decided_at",
+        (set_name, disk_id, path, kind, decision, now()))
