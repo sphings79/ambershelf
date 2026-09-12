@@ -2,19 +2,19 @@
 # middleware names and the service address to your own installation.
 http:
   routers:
-    ambersync:
+    ambershelf:
       rule: "Host(`sync.example.com`)"
       entryPoints:
         - websecure
       middlewares:
         - lan-only
         - security-headers
-      service: ambersync
+      service: ambershelf
       tls:
         certResolver: default
 
   services:
-    ambersync:
+    ambershelf:
       loadBalancer:
         servers:
-          - url: "http://ambersync:8080"
+          - url: "http://ambershelf:8080"

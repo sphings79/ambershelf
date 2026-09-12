@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Two languages, one dictionary. Missing keys fall back to the key itself,
 which is ugly enough to be noticed during testing."""
 from __future__ import annotations
@@ -7,7 +7,7 @@ LANGUAGES = {"de": "Deutsch", "en": "English"}
 
 STRINGS: dict[str, dict[str, str]] = {
     "de": {
-        "app.name": "AmberSync",
+        "app.name": "AmberShelf",
         "app.tagline": "Plattenabgleich mit Freigabe",
 
         "nav.overview": "Übersicht",
@@ -42,7 +42,7 @@ STRINGS: dict[str, dict[str, str]] = {
 
         "helper.missing.title": "Der Host-Helfer antwortet nicht",
         "helper.missing.body": "Ohne ihn kann keine Platte eingehängt werden. "
-                               "Prüfe auf dem Host: systemctl status ambersync-helper",
+                               "Prüfe auf dem Host: systemctl status ambershelf-helper",
 
         "overview.title": "Übersicht",
         "overview.no_sets": "Noch kein Satz eingerichtet. Registriere zuerst eine Platte.",
@@ -82,7 +82,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.role_locked_help":
             "Der Container darf Platten hinzufügen, aber keine Rolle ändern und "
             "nichts entfernen. Das geht bewusst nur auf dem Host: "
-            "sudo ambersync-helper --admin set-role <uuid> slave",
+            "sudo ambershelf-helper --admin set-role <uuid> slave",
         "disks.register_help":
             "Der Master wird immer nur lesend eingehängt. Prüfe die Rolle, bevor "
             "du registrierst — ändern lässt sie sich danach nur noch am Host.",
@@ -138,7 +138,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "plan.fits": "passt",
         "plan.does_not_fit": "passt nicht",
         "plan.deletions_note":
-            "Löschungen erscheinen erst, wenn AmberSync selbst einmal geschrieben hat. "
+            "Löschungen erscheinen erst, wenn AmberShelf selbst einmal geschrieben hat. "
             "Vorher ist nicht unterscheidbar, ob eine Datei gelöscht wurde oder nie da war.",
 
         "job.running": "läuft",
@@ -176,7 +176,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.connection": "Verbindung",
         "settings.connection.help":
             "Diese App kann das Rechenwerk selbst betreiben oder ein Fenster auf "
-            "ein AmberSync sein, das anderswo läuft — etwa die Docker-Fassung auf "
+            "ein AmberShelf sein, das anderswo läuft — etwa die Docker-Fassung auf "
             "einem Linux-Rechner.",
         "settings.connection.restart":
             "Wirkt beim nächsten Start. Sollte die Adresse nicht antworten, "
@@ -216,7 +216,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.integrity_check": "Dateien beim Einlesen auf Beschädigung prüfen",
         "settings.notify": "Benachrichtigung",
         "settings.notify.help":
-            "AmberSync schickt bei Ereignissen ein kleines JSON an eine Adresse "
+            "AmberShelf schickt bei Ereignissen ein kleines JSON an eine Adresse "
             "deiner Wahl — Home Assistant, ntfy, Gotify oder ein eigenes Skript.",
         "settings.notify_url": "Adresse (Webhook)",
         "settings.notify_level": "Wann melden",
@@ -236,7 +236,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "apply.refused.nothing": "Nichts ausgewählt — gib zuerst etwas frei.",
         "plan.kind.deleted": "Gelöscht",
         "plan.kind.deleted.help":
-            "Von AmberSync hierher kopiert, auf dem Master nicht mehr vorhanden. "
+            "Von AmberShelf hierher kopiert, auf dem Master nicht mehr vorhanden. "
             "Braucht deine Freigabe.",
         "plan.state.applied": "ausgeführt",
         "plan.copy_modified": "Die Kopie selbst wurde verändert, nicht der Master",
@@ -244,7 +244,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "plan.apply": "{count} ausführen",
         "plan.apply.help":
             "{count} Vorgänge sind freigegeben. Neue Dateien werden kopiert; "
-            "ersetzte und gelöschte landen unter .ambersync-trash auf der Kopie.",
+            "ersetzte und gelöschte landen unter .ambershelf-trash auf der Kopie.",
         "plan.decide": "Entscheidung",
         "plan.decide.all": "Alle in dieser Liste:",
         "plan.decide.approve": "Freigeben",
@@ -276,13 +276,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "events.no_runs": "Noch nichts ausgeführt.",
         "job.phase.apply": "Ausführen",
         "settings.delete_mode": "Gelöschte und ersetzte Dateien",
-        "settings.delete_mode.trash": "nach .ambersync-trash verschieben",
+        "settings.delete_mode.trash": "nach .ambershelf-trash verschieben",
         "settings.delete_mode.remove": "endgültig löschen",
         "settings.keep_mtime": "Änderungsdatum mitkopieren",
         "overview.unprotected": "nicht schreibgeschützt",
         "unprotected.title": "Der Master ist auf diesem System nicht schreibgeschützt",
         "unprotected.body":
-            "AmberSync schreibt nie auf ihn — aber jedes andere Programm auf diesem "
+            "AmberShelf schreibt nie auf ihn — aber jedes andere Programm auf diesem "
             "Rechner kann es. Den vom Kernel erzwungenen Schutz gibt es nur in der "
             "Docker-Fassung auf einem Linux-Rechner.",
         "unprotected.registry":
@@ -336,7 +336,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "Meldungen suchbar bleiben.",
     },
     "en": {
-        "app.name": "AmberSync",
+        "app.name": "AmberShelf",
         "app.tagline": "Disk mirroring with an approval step",
 
         "nav.overview": "Overview",
@@ -371,7 +371,7 @@ STRINGS: dict[str, dict[str, str]] = {
 
         "helper.missing.title": "The host helper is not answering",
         "helper.missing.body": "Without it nothing can be mounted. On the host check: "
-                               "systemctl status ambersync-helper",
+                               "systemctl status ambershelf-helper",
 
         "overview.title": "Overview",
         "overview.no_sets": "No set yet. Register a disk first.",
@@ -411,7 +411,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.role_locked_help":
             "The container may add disks but can never change a role or remove one. "
             "That is deliberate and has to be done on the host: "
-            "sudo ambersync-helper --admin set-role <uuid> slave",
+            "sudo ambershelf-helper --admin set-role <uuid> slave",
         "disks.register_help":
             "A master is always mounted read-only. Check the role before registering - "
             "afterwards it can only be changed on the host.",
@@ -466,7 +466,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "plan.fits": "fits",
         "plan.does_not_fit": "does not fit",
         "plan.deletions_note":
-            "Deletions only appear once AmberSync has written to a copy itself. "
+            "Deletions only appear once AmberShelf has written to a copy itself. "
             "Before that there is no way to tell a deleted file from one that was "
             "never there.",
 
@@ -505,7 +505,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.connection": "Connection",
         "settings.connection.help":
             "This application can run the engine itself, or be a window onto an "
-            "AmberSync running somewhere else - the Docker one on a Linux machine, "
+            "AmberShelf running somewhere else - the Docker one on a Linux machine, "
             "for instance.",
         "settings.connection.restart":
             "Takes effect at the next start. If the address does not answer, the "
@@ -545,7 +545,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.integrity_check": "Check files for damage while indexing",
         "settings.notify": "Notification",
         "settings.notify.help":
-            "AmberSync posts a small JSON object to an address of your choice when "
+            "AmberShelf posts a small JSON object to an address of your choice when "
             "something happens - Home Assistant, ntfy, Gotify or a script of your "
             "own.",
         "settings.notify_url": "Address (webhook)",
@@ -566,14 +566,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "apply.refused.nothing": "Nothing selected - approve something first.",
         "plan.kind.deleted": "Deleted",
         "plan.kind.deleted.help":
-            "Copied here by AmberSync, gone from the master. Needs your approval.",
+            "Copied here by AmberShelf, gone from the master. Needs your approval.",
         "plan.state.applied": "carried out",
         "plan.copy_modified": "The copy itself was altered, not the master",
         "plan.pending": "{count} undecided",
         "plan.apply": "Carry out {count}",
         "plan.apply.help":
             "{count} operations are approved. New files are copied; replaced and "
-            "deleted ones are parked under .ambersync-trash on the copy.",
+            "deleted ones are parked under .ambershelf-trash on the copy.",
         "plan.decide": "Decision",
         "plan.decide.all": "Everything in this list:",
         "plan.decide.approve": "Approve",
@@ -605,13 +605,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "events.no_runs": "Nothing has been carried out yet.",
         "job.phase.apply": "Carrying out",
         "settings.delete_mode": "Deleted and replaced files",
-        "settings.delete_mode.trash": "move to .ambersync-trash",
+        "settings.delete_mode.trash": "move to .ambershelf-trash",
         "settings.delete_mode.remove": "delete for good",
         "settings.keep_mtime": "Copy the modification date too",
         "overview.unprotected": "not write-protected",
         "unprotected.title": "The master is not write-protected on this system",
         "unprotected.body":
-            "AmberSync never writes to it - but any other program on this computer "
+            "AmberShelf never writes to it - but any other program on this computer "
             "can. Protection the kernel actually enforces only exists in the Docker "
             "edition on a Linux machine.",
         "unprotected.registry":

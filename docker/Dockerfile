@@ -16,9 +16,9 @@ COPY server ./server
 
 # The container runs unprivileged. It cannot mount anything - that is the
 # host helper's job, and the whole point of the split.
-RUN useradd --uid 1000 --user-group --no-create-home ambersync \
- && mkdir -p /data /mnt/ambersync \
- && chown ambersync:ambersync /data
+RUN useradd --uid 1000 --user-group --no-create-home ambershelf \
+ && mkdir -p /data /mnt/ambershelf \
+ && chown ambershelf:ambershelf /data
 
 USER 1000:1000
 EXPOSE 8080

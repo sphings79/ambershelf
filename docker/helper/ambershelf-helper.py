@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# AmberSync - disk mirroring with an approval workflow
+# AmberShelf - disk mirroring with an approval workflow
 # Copyright (C) 2026 Dennis Arning
 # Licensed under the GNU Affero General Public License v3.0 or later.
-"""AmberSync host helper.
+"""AmberShelf host helper.
 
 Runs as root on the Docker host. It is the only component allowed to mount
 anything. The container talks to it over a unix socket and can only ask for a
@@ -43,10 +43,10 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-CONFIG_PATH = Path("/etc/ambersync/disks.conf")
-SOCKET_PATH = Path("/run/ambersync/helper.sock")
-MOUNT_ROOT = Path("/mnt/ambersync")
-SOCKET_GROUP = "ambersync"
+CONFIG_PATH = Path("/etc/ambershelf/disks.conf")
+SOCKET_PATH = Path("/run/ambershelf/helper.sock")
+MOUNT_ROOT = Path("/mnt/ambershelf")
+SOCKET_GROUP = "ambershelf"
 
 # The container runs as this user; exfat and ntfs have no own ownership model,
 # so the files need to be handed to it at mount time.
@@ -77,7 +77,7 @@ def now() -> str:
 
 
 def log(message: str) -> None:
-    print(f"[ambersync-helper] {message}", flush=True)
+    print(f"[ambershelf-helper] {message}", flush=True)
 
 
 # --------------------------------------------------------------------------
@@ -433,7 +433,7 @@ def handle_register(request: dict) -> dict:
     """Add a disk to the registry. Add-only, on purpose.
 
     Changing the role of a known disk or removing a registration is refused
-    here; both need ``ambersync-helper --admin`` on the host. Otherwise a
+    here; both need ``ambershelf-helper --admin`` on the host. Otherwise a
     compromised container could re-declare the master as a slave and get it
     mounted writable.
     """
@@ -451,7 +451,7 @@ def handle_register(request: dict) -> dict:
             raise RuntimeError(
                 "this disk is already registered with a different role or set. "
                 "Changing that has to be done on the host with "
-                "'ambersync-helper --admin set-role'."
+                "'ambershelf-helper --admin set-role'."
             )
         existing["display_name"] = display_name
         existing["last_seen_at"] = now()
@@ -557,7 +557,7 @@ def serve() -> None:
 # --------------------------------------------------------------------------
 
 def admin(argv: list[str]) -> None:
-    parser = argparse.ArgumentParser(prog="ambersync-helper --admin")
+    parser = argparse.ArgumentParser(prog="ambershelf-helper --admin")
     sub = parser.add_subparsers(dest="action", required=True)
     sub.add_parser("list")
     set_role = sub.add_parser("set-role")
@@ -603,7 +603,7 @@ def admin(argv: list[str]) -> None:
             sys.exit("cancelled")
         disk["role"] = args.role
         save_config(config)
-        print("done - restart ambersync-helper so running mounts are re-evaluated")
+        print("done - restart ambershelf-helper so running mounts are re-evaluated")
         return
 
     if args.action == "remove":

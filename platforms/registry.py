@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """The disk registry for the desktop builds.
 
 On Linux the mapping from disk to role lives in a root-owned file that the

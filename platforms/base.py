@@ -1,5 +1,5 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
-"""What the rest of AmberSync is allowed to know about disks.
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+"""What the rest of AmberShelf is allowed to know about disks.
 
 Everything operating-system specific lives behind this interface: how volumes
 are found, how they are made readable, and whether the source can be

@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """macOS backend.
 
 macOS mounts a removable volume the moment it is plugged in, so there is
@@ -8,10 +8,10 @@ what is already under /Volumes and asks `diskutil` who it is.
 **The master is not write-protected here.** macOS *can* mount a volume
 read-only without administrator rights - `diskutil unmount` followed by
 `diskutil mount readOnly` works as the logged-in user - but the system has
-already mounted the disk writable by the time AmberSync sees it, so the few
+already mounted the disk writable by the time AmberShelf sees it, so the few
 seconds in between would make the promise a half-truth. Rather than half a
 guarantee, the interface states plainly on every page that other programs on
-this computer can still write to the master. AmberSync itself never does.
+this computer can still write to the master. AmberShelf itself never does.
 """
 from __future__ import annotations
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """The desktop application: a window around the same interface.
 
 Two modes, chosen in the settings and read again at start-up:
 
   local   the engine runs here, and the disks plugged into this computer are
           the ones it works with
-  remote  the window is a view onto an AmberSync running somewhere else, for
+  remote  the window is a view onto an AmberShelf running somewhere else, for
           instance the Docker one on a Linux machine
 
 If a remote is configured but unreachable, the application falls back to
@@ -32,18 +32,18 @@ from pathlib import Path
 if not getattr(sys, "frozen", False):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-os.environ.setdefault("AMBERSYNC_DESKTOP", "1")
+os.environ.setdefault("AMBERSHELF_DESKTOP", "1")
 
 from engine import paths                                       # noqa: E402
 
-WINDOW_TITLE = "AmberSync"
+WINDOW_TITLE = "AmberShelf"
 WINDOW_SIZE = (1180, 820)
 START_TIMEOUT = 25
 
 
 def stored_setting(key: str, default: str = "") -> str:
     """Read a setting straight from the database, before the server exists."""
-    database = paths.app_data_dir() / "ambersync.db"
+    database = paths.app_data_dir() / "ambershelf.db"
     if not database.exists():
         return default
     try:
@@ -78,7 +78,7 @@ def serve_locally(port: int) -> threading.Thread:
 
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
     server = uvicorn.Server(config)
-    thread = threading.Thread(target=server.run, name="ambersync-server", daemon=True)
+    thread = threading.Thread(target=server.run, name="ambershelf-server", daemon=True)
     thread.start()
     return thread
 
@@ -93,7 +93,7 @@ def wait_until_up(url: str) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="ambersync", description=__doc__)
+    parser = argparse.ArgumentParser(prog="ambershelf", description=__doc__)
     parser.add_argument("--local", action="store_true",
                         help="ignore a configured remote and run the engine here")
     parser.add_argument("--no-window", action="store_true",
@@ -120,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     if arguments.no_window:
-        print(f"AmberSync is at {url} - press Ctrl+C to stop")
+        print(f"AmberShelf is at {url} - press Ctrl+C to stop")
         try:
             while True:
                 time.sleep(3600)

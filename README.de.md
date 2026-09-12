@@ -1,6 +1,6 @@
 <div align="center">
 
-# AmberSync
+# AmberShelf
 
 ### Einbahn-Plattenabgleich mit Freigabe — gebaut gegen Verschlüsselungstrojaner
 
@@ -17,11 +17,11 @@ liegen.
 
 [English](README.md) · **Deutsch**
 
-**Wenn dir AmberSync nützt, gib dem Repo bitte einen ⭐ Stern** — anders finden Leute mit
+**Wenn dir AmberShelf nützt, gib dem Repo bitte einen ⭐ Stern** — anders finden Leute mit
 demselben Problem es nicht.
 
 <img src="docs/screenshots/overview-dark.png"
-     alt="AmberSync Übersicht im dunklen Erscheinungsbild: eine nur lesend eingehängte Master-Platte und zwei Sicherungskopien mit Verzeichnisstand" width="880">
+     alt="AmberShelf Übersicht im dunklen Erscheinungsbild: eine nur lesend eingehängte Master-Platte und zwei Sicherungskopien mit Verzeichnisstand" width="880">
 
 </div>
 
@@ -36,7 +36,7 @@ also genau das, was du **nicht** willst, wenn die Quelle gerade von einem Trojan
 verschlüsselt, von einem defekten Kabel zerschossen oder von einem vertippten Befehl
 geleert wurde.
 
-AmberSync dreht das um. Es liest beide Seiten, bildet den Unterschied über Prüfsummen und
+AmberShelf dreht das um. Es liest beide Seiten, bildet den Unterschied über Prüfsummen und
 **zeigt dir dann, was es tun würde**. Dateien hinzufügen ist Alltag. Eine ersetzen oder
 löschen braucht deine Freigabe. Eine Massenänderung löst die Notbremse und hält den Lauf an.
 
@@ -47,25 +47,25 @@ angesteckt, zwischen Mac und Windows-PC getragen, den Rest der Zeit im Schrank.
 
 | Übersicht — hell | Aufteilung auf mehrere Platten |
 | --- | --- |
-| <img src="docs/screenshots/overview-light.png" alt="AmberSync Übersicht im hellen Erscheinungsbild mit Plattenkarten, Belegungsbalken und Verzeichnisstand" width="420"> | <img src="docs/screenshots/split-light.png" alt="AmberSync Aufteilung: Ordner eines Fotoarchivs werden zwei Sicherungsplatten zugeteilt, mit Belegungsbalken" width="420"> |
+| <img src="docs/screenshots/overview-light.png" alt="AmberShelf Übersicht im hellen Erscheinungsbild mit Plattenkarten, Belegungsbalken und Verzeichnisstand" width="420"> | <img src="docs/screenshots/split-light.png" alt="AmberShelf Aufteilung: Ordner eines Fotoarchivs werden zwei Sicherungsplatten zugeteilt, mit Belegungsbalken" width="420"> |
 
 **Die Vorschau** — es wird nichts ausgeführt, bis du entschieden hast:
 
-<img src="docs/screenshots/preview-dark.png" alt="AmberSync Vorschau mit neuen, geänderten, umbenannten, gelöschten und nur auf der Kopie vorhandenen Dateien je Sicherungsplatte" width="880">
+<img src="docs/screenshots/preview-dark.png" alt="AmberShelf Vorschau mit neuen, geänderten, umbenannten, gelöschten und nur auf der Kopie vorhandenen Dateien je Sicherungsplatte" width="880">
 
 **Beschädigung wird erkannt, bevor sie weitergetragen wird** — ein JPEG, das nicht
 mehr wie ein JPEG beginnt, ein Erpresserbrief, eine Massenänderung in einer Minute:
 
-<img src="docs/screenshots/findings-dark.png" alt="AmberSync Befunde-Seite mit einer Massenänderung und dreißig Dateien, deren Kopf nicht mehr zur Endung passt, bei eingelegter Notbremse" width="880">
+<img src="docs/screenshots/findings-dark.png" alt="AmberShelf Befunde-Seite mit einer Massenänderung und dreißig Dateien, deren Kopf nicht mehr zur Endung passt, bei eingelegter Notbremse" width="880">
 
 **Jede Ersetzung, Umbenennung und Löschung gibst du frei** — einzeln oder gesammelt, und
 die Antwort wird gemerkt:
 
-<img src="docs/screenshots/approvals-dark.png" alt="AmberSync Freigabeliste: jede geänderte Datei lässt sich freigeben, diesmal übergehen oder nie wieder fragen, mit dem Hinweis, dass die Kopie selbst verändert wurde und nicht der Master" width="880">
+<img src="docs/screenshots/approvals-dark.png" alt="AmberShelf Freigabeliste: jede geänderte Datei lässt sich freigeben, diesmal übergehen oder nie wieder fragen, mit dem Hinweis, dass die Kopie selbst verändert wurde und nicht der Master" width="880">
 
 **Hell, dunkel und System, fünf Akzentfarben:**
 
-<img src="docs/screenshots/settings-dark.png" alt="AmberSync Einstellungen mit Umschalter für das Erscheinungsbild, Akzentfarben und den Grenzwerten der Notbremse" width="880">
+<img src="docs/screenshots/settings-dark.png" alt="AmberShelf Einstellungen mit Umschalter für das Erscheinungsbild, Akzentfarben und den Grenzwerten der Notbremse" width="880">
 
 ## Eigenschaften
 
@@ -81,7 +81,7 @@ die Antwort wird gemerkt:
   Platte gezwungen, zurückgelesen und geprüft — erst dann umbenannt. Ein abgebrochener
   Lauf hinterlässt eine Temporärdatei, nie ein halbes Foto unter dem richtigen Namen.
 - **Ersetzte und gelöschte Dateien werden geparkt**, nicht vernichtet — unter
-  `.ambersync-trash` auf der Kopie, mit dem Zeitstempel des Laufs, bis du selbst aufräumst.
+  `.ambershelf-trash` auf der Kopie, mit dem Zeitstempel des Laufs, bis du selbst aufräumst.
 - **Entscheidungen werden gemerkt.** Freigeben, diesmal übergehen oder nie wieder fragen;
   du arbeitest die Altlasten einmal ab statt bei jedem Lauf dieselben fünfzig Fälle.
 - **Beschädigte Dateien werden erkannt, nicht vermutet.** Jede Datei wird gegen die
@@ -108,7 +108,7 @@ die Antwort wird gemerkt:
   er lässt sich anhalten, fortsetzen und übersteht einen Neustart des Containers mit
   höchstens einer verlorenen Datei.
 - **Normale, durchsuchbare Kopien.** Eine Sicherungsplatte bleibt ein gewöhnlicher
-  Ordnerbaum, den du an jedem Rechner ohne AmberSync öffnen kannst — kein eigenes Format.
+  Ordnerbaum, den du an jedem Rechner ohne AmberShelf öffnen kannst — kein eigenes Format.
 - **Unprivilegierter Container.** Kein `privileged`, keine Capabilities, kein Gerätezugriff.
 - **Deutsche und englische Oberfläche**, helles/dunkles/System-Erscheinungsbild, fünf
   Akzentfarben.
@@ -118,14 +118,14 @@ die Antwort wird gemerkt:
 ```
 Host                                Container (unprivilegiert)
 ──────────────────────────────      ────────────────────────────
-ambersync-helper (root)             Weboberfläche
+ambershelf-helper (root)             Weboberfläche
   · listet Blockgeräte                · Einlesen und Prüfsummen
   · hängt den Master nur lesend ein   · Vergleich und Vorschau
   · hängt Kopien schreibend ein       · Ordnerzuteilung
-  · besitzt /etc/ambersync/disks.conf · SQLite-Verzeichnis
+  · besitzt /etc/ambershelf/disks.conf · SQLite-Verzeichnis
           │                                      │
           └──── Unix-Socket ─────────────────────┘
-          └──── /mnt/ambersync (rshared bind) ───┘
+          └──── /mnt/ambershelf (rshared bind) ───┘
 ```
 
 Der Container kann nur darum **bitten**, einen Satz einzuhängen. Er benennt nie ein Gerät,
@@ -141,16 +141,16 @@ Löschen-und-neu-anlegen ein Weg an der Regel vorbei.
 | | Quelle schreibgeschützt | Braucht | Bezug |
 | --- | --- | --- | --- |
 | **Docker auf Linux** | **ja, vom Kernel** | einen Linux-Rechner | [unten](#schnellstart) |
-| **macOS-App** | nein | macOS 12+, Apple Silicon | [Herunterladen](https://github.com/sphings79/ambersync/releases/latest) |
-| **Windows-App** | nein | Windows 10+ | [Herunterladen](https://github.com/sphings79/ambersync/releases/latest) |
+| **macOS-App** | nein | macOS 12+, Apple Silicon | [Herunterladen](https://github.com/sphings79/ambershelf/releases/latest) |
+| **Windows-App** | nein | Windows 10+ | [Herunterladen](https://github.com/sphings79/ambershelf/releases/latest) |
 
 Die Desktop-Fassungen lesen die Datenträger, die das System ohnehin eingehängt hat —
 keine Administratorrechte, kein Dienst, kein Hintergrundprozess. Was sie aufgeben, ist
 die eine Zusage, die eine privilegierte Hälfte braucht: **sie können den Master nicht
-schreibschützen** und sagen das auf jeder Seite. AmberSync selbst schreibt nie auf ihn
+schreibschützen** und sagen das auf jeder Seite. AmberShelf selbst schreibt nie auf ihn
 — aber alles andere auf diesem Rechner kann es.
 
-Beide Apps lassen sich auch auf ein AmberSync anderswo richten (Einstellungen →
+Beide Apps lassen sich auch auf ein AmberShelf anderswo richten (Einstellungen →
 Verbindung). Dann sind sie ein Fenster auf die Docker-Fassung — mit der vollen Zusage
 dahinter.
 
@@ -166,20 +166,20 @@ Distribution dabei). `exfatprogs`, falls du einen unsauber getrennten exFAT-Date
 reparieren können willst.
 
 ```bash
-git clone https://github.com/sphings79/ambersync.git
-cd ambersync
+git clone https://github.com/sphings79/ambershelf.git
+cd ambershelf
 sudo docker/install.sh      # Helfer, systemd-Unit, Gruppe, Verzeichnisse
 docker compose up -d
 ```
 
-Ein fertiges Image liegt unter `ghcr.io/sphings79/ambersync:latest` für `linux/amd64`
+Ein fertiges Image liegt unter `ghcr.io/sphings79/ambershelf:latest` für `linux/amd64`
 und `linux/arm64` — trag es in `compose.yaml` bei `image:` ein, wenn du nicht selbst
 bauen willst.
 
 Die Oberfläche hört auf `127.0.0.1:8088`. Stell sie hinter einen Reverse Proxy und
 beschränke sie auf dein eigenes Netz — sie hat bewusst keine eigene Anmeldung, weil jede
 Installation dazu ohnehin schon eine Meinung hat. Ein Traefik-Beispiel für den
-Datei-Provider liegt in [`docs/traefik-ambersync.yml`](docs/traefik-ambersync.yml).
+Datei-Provider liegt in [`docs/traefik-ambershelf.yml`](docs/traefik-ambershelf.yml).
 
 ## Benutzung
 
@@ -196,7 +196,7 @@ Beides geht, auch gemischt innerhalb eines Satzes.
 
 **exFAT** ist das einzige Dateisystem, das macOS und Windows ohne Zusatzsoftware lesen
 **und** beschreiben können — deshalb gewinnt es bei Platten, die herumgereicht werden. Es
-hat kein Journal, also schreibt AmberSync über eine Temporärdatei und benennt erst um,
+hat kein Journal, also schreibt AmberShelf über eine Temporärdatei und benennt erst um,
 wenn die Prüfsumme stimmt, hängt nach jedem Lauf sauber aus und weigert sich, auf einen
 Datenträger zu schreiben, dessen Dirty-Flag gesetzt ist.
 
@@ -204,7 +204,7 @@ Datenträger zu schreiben, dessen Dirty-Flag gesetzt ist.
 
 ## Im Vergleich
 
-| | AmberSync | rsync | Syncthing | FreeFileSync |
+| | AmberShelf | rsync | Syncthing | FreeFileSync |
 | --- | --- | --- | --- | --- |
 | Quelle physisch schreibgeschützt | **ja, `ro`-Mount** | nein | nein | nein |
 | Löschungen brauchen Freigabe | **ja** | nein (`--delete` oder gar nicht) | nein | nur Nachfrage |
@@ -216,7 +216,7 @@ Datenträger zu schreiben, dessen Dirty-Flag gesetzt ist.
 | Weboberfläche | **ja** | nein | ja | nein |
 
 Wenn du laufenden Abgleich in beide Richtungen zwischen Rechnern willst, nimm Syncthing.
-Wenn du einen skriptbaren Einzeiler willst, nimm rsync. AmberSync ist für den Fall, dass
+Wenn du einen skriptbaren Einzeiler willst, nimm rsync. AmberShelf ist für den Fall, dass
 die Kopie der Quelle **nicht** in einen kaputten Zustand folgen darf.
 
 ## Häufige Fragen
@@ -228,7 +228,7 @@ Endung verspricht, Erpresserbriefe und sinnlose zweite Endungen fallen am Namen 
 eine Massenänderung innerhalb einer Stunde wird gemeldet; all das hält die Notbremse, und
 es wird nichts geschrieben. Es schützt **nicht** davor, dass jemand den Host selbst
 übernimmt. Dein eigentlicher Schutz dagegen ist, dass die Platten die meiste Zeit nicht
-angesteckt sind — und AmberSync ist so gebaut, dass es das nicht aufweicht.
+angesteckt sind — und AmberShelf ist so gebaut, dass es das nicht aufweicht.
 
 **Warum keine Entropie-Messung?**
 Weil sie bei einem Fotoarchiv nichts taugt. JPEG und MP4 sind bereits komprimiert und
@@ -243,10 +243,10 @@ Das alles um rsync herumzubauen heißt, den Großteil davon ohnehin nachzubauen 
 weniger Kontrolle über jeden einzelnen Schritt.
 
 **Kann es Dateien auf der Kopie löschen?**
-Nur solche, die du freigibst, einzeln oder gesammelt — und erst, wenn AmberSync selbst
+Nur solche, die du freigibst, einzeln oder gesammelt — und erst, wenn AmberShelf selbst
 einmal auf diese Kopie geschrieben hat. Vorher lässt sich eine gelöschte Datei nicht von
 einer unterscheiden, die nie da war; das sagt es, statt zu raten. Gelöschte Dateien landen
-standardmäßig unter `.ambersync-trash` auf der Kopie — eine bereute Freigabe ist also
+standardmäßig unter `.ambershelf-trash` auf der Kopie — eine bereute Freigabe ist also
 umkehrbar.
 
 **Wie lange dauert der erste Lauf?**
@@ -294,7 +294,7 @@ Commit-Nachrichten bitte auf Englisch.
 
 ## Das Projekt unterstützen
 
-Wenn dir AmberSync eine Sicherung gerettet hat — oder auch nur einen Abend:
+Wenn dir AmberShelf eine Sicherung gerettet hat — oder auch nur einen Abend:
 
 <a href="https://buymeacoffee.com/sphings">
   <img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-sphings-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee">

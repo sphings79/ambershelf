@@ -1,8 +1,8 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Telling somebody when it matters.
 
 A single webhook rather than an integration with anything in particular: the
-URL goes in the settings, AmberSync posts a small JSON object, and whatever
+URL goes in the settings, AmberShelf posts a small JSON object, and whatever
 is at the other end decides what to do with it. Home Assistant, ntfy, Gotify,
 Slack, a script - they all take a POST.
 
@@ -45,7 +45,7 @@ def wanted(level: str) -> bool:
 def build_payload(level: str, title: str, message: str,
                   set_name: str | None = None, **extra) -> dict:
     return {
-        "source": "ambersync",
+        "source": "ambershelf",
         "level": level,
         "title": title,
         "message": message,
@@ -58,7 +58,7 @@ def post(url: str, payload: dict, headers: dict | None = None) -> tuple[bool, st
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(url, data=body, method="POST")
     request.add_header("Content-Type", "application/json")
-    request.add_header("User-Agent", "AmberSync")
+    request.add_header("User-Agent", "AmberShelf")
     for key, value in (headers or {}).items():
         request.add_header(key, value)
     try:
@@ -95,10 +95,10 @@ def send(level: str, title: str, message: str, set_name: str | None = None,
         if not ok:
             db.log_event("warning", f"notification failed: {detail}", set_name, "notify")
 
-    threading.Thread(target=deliver, name="ambersync-notify", daemon=True).start()
+    threading.Thread(target=deliver, name="ambershelf-notify", daemon=True).start()
 
 
 def send_test(url: str, headers: dict | None = None) -> tuple[bool, str]:
     """Used by the button in the settings - this one does wait for an answer."""
     return post(url, build_payload(
-        "info", "AmberSync", "This is a test from AmberSync."), headers)
+        "info", "AmberShelf", "This is a test from AmberShelf."), headers)

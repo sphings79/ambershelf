@@ -1,4 +1,4 @@
-// AmberSync - AGPL-3.0-or-later
+// AmberShelf - AGPL-3.0-or-later
 // Keeps the job panel current without reloading the page underneath it.
 (function () {
   var container = document.getElementById("jobs");

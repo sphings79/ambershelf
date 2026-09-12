@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Start the built application and ask it for a page.
 
 A build that imports cleanly but cannot find its own templates is a build
@@ -21,10 +21,10 @@ PAGES = ("/healthz", "/", "/disks", "/settings", "/findings", "/events")
 
 
 def executable() -> Path:
-    macos = Path("dist/AmberSync.app/Contents/MacOS/AmberSync")
+    macos = Path("dist/AmberShelf.app/Contents/MacOS/AmberShelf")
     if macos.exists():
         return macos
-    for candidate in (Path("dist/AmberSync/AmberSync.exe"), Path("dist/AmberSync/AmberSync")):
+    for candidate in (Path("dist/AmberShelf/AmberShelf.exe"), Path("dist/AmberShelf/AmberShelf")):
         if candidate.exists():
             return candidate
     raise SystemExit("no build found under dist/")
@@ -46,8 +46,8 @@ def main() -> int:
     print(f"  starting {binary}")
 
     environment = dict(os.environ)
-    environment["AMBERSYNC_DATA_DIR"] = tempfile.mkdtemp(prefix="ambersync-smoke-")
-    environment["AMBERSYNC_DESKTOP"] = "1"
+    environment["AMBERSHELF_DATA_DIR"] = tempfile.mkdtemp(prefix="ambershelf-smoke-")
+    environment["AMBERSHELF_DESKTOP"] = "1"
 
     process = subprocess.Popen(
         [str(binary), "--no-window", "--port", str(PORT)],

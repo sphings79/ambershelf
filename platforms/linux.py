@@ -1,10 +1,10 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Linux backend: everything goes through the root helper on the host.
 
 This is the only backend that can hold the master read-only in a way the
 kernel enforces, and the only one where the role of a disk is kept out of
 reach of the application. Both come from the same thing - a small privileged
-process that the rest of AmberSync can only talk to over a socket with six
+process that the rest of AmberShelf can only talk to over a socket with six
 commands.
 """
 from __future__ import annotations
@@ -17,9 +17,9 @@ from typing import Any
 
 from platforms.base import BackendError, BackendUnavailable, MountReport, Volume
 
-HELPER_SOCKET = Path(os.environ.get("AMBERSYNC_HELPER_SOCKET",
-                                    "/run/ambersync/helper.sock"))
-MOUNT_ROOT = Path(os.environ.get("AMBERSYNC_MOUNT_ROOT", "/mnt/ambersync"))
+HELPER_SOCKET = Path(os.environ.get("AMBERSHELF_HELPER_SOCKET",
+                                    "/run/ambershelf/helper.sock"))
+MOUNT_ROOT = Path(os.environ.get("AMBERSHELF_MOUNT_ROOT", "/mnt/ambershelf"))
 
 
 def call(command: str, **payload: Any) -> dict:

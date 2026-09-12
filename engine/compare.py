@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Comparing a master against its slaves and turning that into a plan.
 
 Everything is compared by size and content hash, never by timestamp. exFAT
@@ -159,7 +159,7 @@ def build_plan(job: Job, set_name: str) -> int:
                  f"plan {plan_id}: {headline}", set_name, "compare")
 
     if summary["brake"]["tripped"]:
-        notify.send("warning", "AmberSync: the brake tripped",
+        notify.send("warning", "AmberShelf: the brake tripped",
                     f"The comparison was held back. {headline}.",
                     set_name, plan=plan_id,
                     reasons=[reason["key"] for reason in summary["brake"]["reasons"]])
@@ -172,7 +172,7 @@ def compare_one(connection, plan_id: int, master_id: int, slave,
     slave_id = slave["id"]
     items: list[tuple] = []
 
-    # What AmberSync itself put on this copy. A file that is in here and gone
+    # What AmberShelf itself put on this copy. A file that is in here and gone
     # from the master was deleted; one that is not was never ours to judge.
     written = {
         row[0]: row[1]

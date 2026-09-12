@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Splitting a master across several slaves.
 
 The unit of assignment is a folder, not a file - a year or an event stays

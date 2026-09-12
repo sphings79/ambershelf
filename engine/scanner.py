@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Indexing a disk: walk it, then hash what changed.
 
 Both phases are resumable. The walk writes size and mtime and clears the
@@ -316,13 +316,13 @@ def scan_disk(job: Job, disk_id: int) -> None:
     if damaged or suspicious_names:
         notify.send(
             "error",
-            f"AmberSync: {disk['display_name']}",
+            f"AmberShelf: {disk['display_name']}",
             f"{len(damaged)} damaged file(s) and {len(suspicious_names)} suspicious "
             f"name(s) found while indexing.",
             disk["set_name"], disk=disk["display_name"],
             damaged=len(damaged), suspicious=len(suspicious_names))
     elif errors:
-        notify.send("warning", f"AmberSync: {disk['display_name']}",
+        notify.send("warning", f"AmberShelf: {disk['display_name']}",
                     f"{len(errors)} file(s) could not be read while indexing.",
                     disk["set_name"], disk=disk["display_name"])
     # Numbers only - the job panel is refreshed by script and stays neutral.

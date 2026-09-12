@@ -1,11 +1,11 @@
 [Unit]
-Description=AmberSync host helper (mounts disks on behalf of the container)
-Documentation=https://github.com/sphings79/ambersync
+Description=AmberShelf host helper (mounts disks on behalf of the container)
+Documentation=https://github.com/sphings79/ambershelf
 After=local-fs.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/ambersync-helper
+ExecStart=/usr/local/bin/ambershelf-helper
 Restart=on-failure
 RestartSec=5
 

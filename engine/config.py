@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Runtime configuration, all overridable by environment variables.
 
 Nothing platform specific belongs here - mount roots and socket paths
@@ -11,9 +11,9 @@ import os
 from engine import paths
 
 DATA_DIR = paths.app_data_dir()
-DB_PATH = DATA_DIR / "ambersync.db"
+DB_PATH = DATA_DIR / "ambershelf.db"
 
-DEFAULT_LANGUAGE = os.environ.get("AMBERSYNC_LANGUAGE", "de")
+DEFAULT_LANGUAGE = os.environ.get("AMBERSHELF_LANGUAGE", "de")
 
 # Read size while hashing. Large enough that a spinning USB disk stays busy,
 # small enough that a pause is noticed quickly.
@@ -31,6 +31,11 @@ EXCLUDED_DIRS = {
     ".documentrevisions-v100",
     ".temporaryitems",
     "found.000",
+    ".ambershelf",
+    ".ambershelf-trash",
+    # The name this project used before it was renamed. Anything already
+    # parked under the old folder stays ignored rather than reappearing as a
+    # pile of strangers on somebody's copy.
     ".ambersync",
     ".ambersync-trash",
 }
@@ -39,16 +44,16 @@ EXCLUDED_FILES = {
     "thumbs.db",
     "desktop.ini",
     "ehthumbs.db",
-    ".ambersync.json",
+    ".ambershelf.json",
 }
 # Prefixes that mark a file as noise rather than content.
 EXCLUDED_PREFIXES = ("._",)
 # Our own half-written files, should a run ever be interrupted.
-TEMP_SUFFIX = ".ambersync-part"
+TEMP_SUFFIX = ".ambershelf-part"
 
 # Where replaced and deleted files are parked on the copy. Keeping them costs
 # space; losing them by accident costs more.
-TRASH_DIR = ".ambersync-trash"
+TRASH_DIR = ".ambershelf-trash"
 
 # Read and write in blocks this size while copying.
 COPY_BLOCK_SIZE = 4 * 1024 * 1024
@@ -70,7 +75,7 @@ DEFAULT_SETTINGS = {
     "slave_free_space_gb": "10",
     "detect_renames": "1",
     "verify_after_copy": "1",
-    # "trash" parks removed and replaced files under .ambersync-trash on the
+    # "trash" parks removed and replaced files under .ambershelf-trash on the
     # copy; "remove" deletes them for good.
     "delete_mode": "trash",
     "keep_mtime": "1",
@@ -80,7 +85,7 @@ DEFAULT_SETTINGS = {
     "notify_headers": "",
     "integrity_check": "1",
     # Desktop builds only: "local" runs the engine here, "remote" turns the
-    # window into a view onto an AmberSync running somewhere else.
+    # window into a view onto an AmberShelf running somewhere else.
     "desktop_mode": "local",
     "desktop_remote_url": "",
     "assignment_depth": "2",

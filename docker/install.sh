@@ -1,5 +1,5 @@
 #!/bin/bash
-# Installs the AmberSync host helper on a Docker host.
+# Installs the AmberShelf host helper on a Docker host.
 # Run as root from the repository directory: sudo docker/install.sh
 set -euo pipefail
 
@@ -32,34 +32,34 @@ if ! command -v fsck.exfat >/dev/null; then
 fi
 
 echo "== group =="
-if ! getent group ambersync >/dev/null; then
-    groupadd --system ambersync
-    echo "created group ambersync"
+if ! getent group ambershelf >/dev/null; then
+    groupadd --system ambershelf
+    echo "created group ambershelf"
 fi
-GID=$(getent group ambersync | cut -d: -f3)
-echo "ambersync gid: $GID"
+GID=$(getent group ambershelf | cut -d: -f3)
+echo "ambershelf gid: $GID"
 
 echo "== directories =="
-install -d -m 0755 /etc/ambersync
-install -d -m 0755 /mnt/ambersync
-install -d -m 0755 /run/ambersync
+install -d -m 0755 /etc/ambershelf
+install -d -m 0755 /mnt/ambershelf
+install -d -m 0755 /run/ambershelf
 
 echo "== helper =="
-install -m 0755 "$HERE/helper/ambersync-helper.py" /usr/local/bin/ambersync-helper
-install -m 0644 "$HERE/helper/ambersync-helper.service" /etc/systemd/system/ambersync-helper.service
+install -m 0755 "$HERE/helper/ambershelf-helper.py" /usr/local/bin/ambershelf-helper
+install -m 0644 "$HERE/helper/ambershelf-helper.service" /etc/systemd/system/ambershelf-helper.service
 systemctl daemon-reload
-systemctl enable --now ambersync-helper.service
+systemctl enable --now ambershelf-helper.service
 sleep 1
-systemctl is-active --quiet ambersync-helper.service && echo "helper is running"
+systemctl is-active --quiet ambershelf-helper.service && echo "helper is running"
 
 echo "== compose environment =="
 ENV_FILE="$HERE/../.env"
-if [[ -f $ENV_FILE ]] && grep -q '^AMBERSYNC_GID=' "$ENV_FILE"; then
-    sed -i "s/^AMBERSYNC_GID=.*/AMBERSYNC_GID=$GID/" "$ENV_FILE"
+if [[ -f $ENV_FILE ]] && grep -q '^AMBERSHELF_GID=' "$ENV_FILE"; then
+    sed -i "s/^AMBERSHELF_GID=.*/AMBERSHELF_GID=$GID/" "$ENV_FILE"
 else
-    echo "AMBERSYNC_GID=$GID" >> "$ENV_FILE"
+    echo "AMBERSHELF_GID=$GID" >> "$ENV_FILE"
 fi
-echo "wrote AMBERSYNC_GID=$GID to $(realpath "$ENV_FILE")"
+echo "wrote AMBERSHELF_GID=$GID to $(realpath "$ENV_FILE")"
 
 cat <<TXT
 
@@ -67,14 +67,14 @@ Done. Next:
 
   docker compose up -d
 
-Registered disks live in /etc/ambersync/disks.conf. The container may add
+Registered disks live in /etc/ambershelf/disks.conf. The container may add
 entries but can never change a role or delete one - that is deliberate. To
 change a role:
 
-  sudo ambersync-helper --admin list
-  sudo ambersync-helper --admin set-role <fs-uuid> slave
+  sudo ambershelf-helper --admin list
+  sudo ambershelf-helper --admin set-role <fs-uuid> slave
 
 To see what is connected right now:
 
-  sudo ambersync-helper --admin scan
+  sudo ambershelf-helper --admin scan
 TXT

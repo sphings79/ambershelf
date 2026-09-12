@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Web interface.
 
 Stage 1 and 2: register disks, mount them, index them, compare them and show
@@ -33,11 +33,11 @@ BASE_DIR = paths.resource_dir() / "server"
 async def lifespan(_: FastAPI):
     db.initialise()
     refresh_registrations()
-    db.log_event("info", "AmberSync started", None, "app")
+    db.log_event("info", "AmberShelf started", None, "app")
     yield
 
 
-app = FastAPI(title="AmberSync", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="AmberShelf", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 

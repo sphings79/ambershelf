@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Does the platform backend work on a real machine of this kind?
 
 Run on the macOS and Windows runners. A build machine has no external disks,
@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-os.environ.setdefault("AMBERSYNC_DESKTOP", "1")
+os.environ.setdefault("AMBERSHELF_DESKTOP", "1")
 
 failures: list[str] = []
 
@@ -31,7 +31,7 @@ def main() -> int:
     from platforms import backend
     from platforms.registry import JsonRegistry
 
-    print(f"AmberSync backend smoke test on {sys.platform}\n")
+    print(f"AmberShelf backend smoke test on {sys.platform}\n")
     check(f"backend chosen: {backend.name}",
           backend.name in ("macos", "windows", "linux"))
     check("the backend reports no write protection on a desktop system",
@@ -58,7 +58,7 @@ def main() -> int:
 
     # The registry has to round-trip on this platform's filesystem.
     registry = JsonRegistry(Path(os.environ.get("RUNNER_TEMP", "."))
-                            / "ambersync-smoke-disks.json")
+                            / "ambershelf-smoke-disks.json")
     try:
         registry.register("SMOKE-0001", "master", "smoke", "Master")
         registry.register("SMOKE-0002", "slave", "smoke", "Copy")

@@ -1,4 +1,4 @@
-# AmberSync - AGPL-3.0-or-later
+# AmberShelf - AGPL-3.0-or-later
 # PyInstaller build for the macOS and Windows applications.
 #
 # One directory rather than one file: a single-file build unpacks itself into
@@ -39,7 +39,7 @@ executable = EXE(
     pyz,
     analysis.scripts,
     exclude_binaries=True,
-    name="AmberSync",
+    name="AmberShelf",
     console=False,
     disable_windowed_traceback=False,
     target_arch=None,
@@ -54,18 +54,18 @@ collection = COLLECT(
     analysis.datas,
     strip=False,
     upx=False,
-    name="AmberSync",
+    name="AmberShelf",
 )
 
 if sys.platform == "darwin":
     app = BUNDLE(
         collection,
-        name="AmberSync.app",
+        name="AmberShelf.app",
         icon=None,
-        bundle_identifier="de.dennis-arning.ambersync",
+        bundle_identifier="de.dennis-arning.ambershelf",
         info_plist={
-            "CFBundleName": "AmberSync",
-            "CFBundleDisplayName": "AmberSync",
+            "CFBundleName": "AmberShelf",
+            "CFBundleDisplayName": "AmberShelf",
             "CFBundleShortVersionString": "0.6.0",
             "CFBundleVersion": "0.6.0",
             "NSHighResolutionCapable": True,
@@ -73,9 +73,9 @@ if sys.platform == "darwin":
             # Reading an external disk needs the user's permission from
             # Ventura onwards, and macOS shows this sentence when it asks.
             "NSRemovableVolumesUsageDescription":
-                "AmberSync reads your master disk and writes to the copies you "
+                "AmberShelf reads your master disk and writes to the copies you "
                 "registered.",
             "NSDesktopFolderUsageDescription":
-                "AmberSync only touches the disks you registered.",
+                "AmberShelf only touches the disks you registered.",
         },
     )

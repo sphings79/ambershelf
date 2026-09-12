@@ -37,10 +37,10 @@ jobs:
         include:
           - os: macos-14
             name: macos-arm64
-            artifact: AmberSync.app
+            artifact: AmberShelf.app
           - os: windows-latest
             name: windows-x64
-            artifact: AmberSync
+            artifact: AmberShelf
     runs-on: ${{ matrix.os }}
     name: build ${{ matrix.name }}
     permissions:
@@ -59,7 +59,7 @@ jobs:
           pip install pyinstaller==6.22.2
 
       - name: Build
-        run: pyinstaller --noconfirm --clean desktop/ambersync.spec
+        run: pyinstaller --noconfirm --clean desktop/ambershelf.spec
 
       - name: Check that the build starts and serves
         shell: bash
@@ -69,38 +69,38 @@ jobs:
         shell: bash
         run: |
           cd dist
-          if [ -d "AmberSync.app" ]; then
+          if [ -d "AmberShelf.app" ]; then
             # Nothing is signed, so macOS quarantines the download. The readme
             # says how to get past it once.
-            zip -qry "../AmberSync-${{ matrix.name }}.zip" "AmberSync.app"
+            zip -qry "../AmberShelf-${{ matrix.name }}.zip" "AmberShelf.app"
           else
-            7z a -tzip "../AmberSync-${{ matrix.name }}.zip" "AmberSync" > /dev/null
+            7z a -tzip "../AmberShelf-${{ matrix.name }}.zip" "AmberShelf" > /dev/null
           fi
 
       - uses: actions/upload-artifact@v4
         with:
-          name: AmberSync-${{ matrix.name }}
-          path: AmberSync-${{ matrix.name }}.zip
+          name: AmberShelf-${{ matrix.name }}
+          path: AmberShelf-${{ matrix.name }}.zip
           retention-days: 14
 
       - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: AmberSync-${{ matrix.name }}.zip
+          files: AmberShelf-${{ matrix.name }}.zip
           fail_on_unmatched_files: true
           body: |
             Nothing here is code-signed, so the first start takes one extra step:
 
-            - **macOS** — right-click `AmberSync.app` and choose **Open**, then
+            - **macOS** — right-click `AmberShelf.app` and choose **Open**, then
               **Open** again. macOS remembers the decision.
             - **Windows** — in the SmartScreen dialog choose **More info → Run anyway**.
 
             **The desktop builds do not hold the master read-only.** Neither system
             offers that to an application without administrator rights, so they say so
-            on every page rather than pretending. AmberSync itself never writes to the
+            on every page rather than pretending. AmberShelf itself never writes to the
             master — but nothing stops anything else on that computer. For the
             guarantee the kernel enforces, run the Docker edition on Linux, or point
             the application at one (Settings → Connection).
 
-            Docker image: `ghcr.io/sphings79/ambersync:latest`
+            Docker image: `ghcr.io/sphings79/ambershelf:latest`

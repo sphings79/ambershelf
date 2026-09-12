@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """The checks that used to be run by hand before every deploy.
 
 Run from the repository root:  python3 tools/checks.py
@@ -214,7 +214,7 @@ def no_unused_imports() -> None:
 
 
 def main() -> int:
-    print("AmberSync checks\n")
+    print("AmberShelf checks\n")
     compiles()
     imports_resolve()
     integrity_recognises_files()

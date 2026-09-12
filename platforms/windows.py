@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Windows backend.
 
 Windows gives a removable volume a drive letter as soon as it appears, so
@@ -10,7 +10,7 @@ has no read-only mount for a single volume. The nearest equivalent is a
 disk-wide flag set through `diskpart`, which needs administrator rights and
 *stays set* until somebody clears it - on this computer and every other one
 the disk is later plugged into. Switching that on behind a user's back would
-be worse than the problem it solves, so AmberSync does not offer it and says
+be worse than the problem it solves, so AmberShelf does not offer it and says
 plainly on every page that other programs can still write to the master.
 
 A volume is identified by its volume GUID (`\\\\?\\Volume{...}`), which

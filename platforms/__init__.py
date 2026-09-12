@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """Picks the platform backend once, at import time."""
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ __all__ = ["Backend", "BackendError", "BackendUnavailable", "MountReport", "Volu
 
 
 def _choose() -> Backend:
-    forced = os.environ.get("AMBERSYNC_BACKEND", "").strip().lower()
+    forced = os.environ.get("AMBERSHELF_BACKEND", "").strip().lower()
     if forced:
         name = forced
     elif sys.platform == "darwin":

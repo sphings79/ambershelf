@@ -1,5 +1,5 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
-"""Carrying out a plan - the only place in AmberSync that writes.
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+"""Carrying out a plan - the only place in AmberShelf that writes.
 
 Rules this file exists to keep:
 
@@ -10,7 +10,7 @@ Rules this file exists to keep:
     the user has approved, one by one or in bulk.
   * Nothing is removed before the additions are done, so a run that runs out
     of space has not deleted anything yet.
-  * Replaced and deleted files are parked under .ambersync-trash unless the
+  * Replaced and deleted files are parked under .ambershelf-trash unless the
     user asked for them to be gone for good.
 
 Paths in a real archive contain spaces and exclamation marks, so everything
@@ -131,7 +131,7 @@ def copy_file(source: Path, target: Path, expected_sha: str, job: Job,
 
 
 def move_to_trash(root: Path, relative: str, stamp: str) -> Path:
-    """Park a file under .ambersync-trash instead of destroying it."""
+    """Park a file under .ambershelf-trash instead of destroying it."""
     target = root / config.TRASH_DIR / stamp / relative
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(root / relative), str(target))
@@ -291,8 +291,8 @@ def apply_plan(job: Job, plan_id: int, kinds: tuple[str, ...] | None = None) -> 
     db.log_event("warning" if totals["failed"] else "info",
                  f"run {run_id}: {message}", set_name, "apply")
     notify.send("error" if totals["failed"] else "info",
-                "AmberSync: run finished" if not totals["failed"]
-                else "AmberSync: run finished with errors",
+                "AmberShelf: run finished" if not totals["failed"]
+                else "AmberShelf: run finished with errors",
                 message, set_name, run=run_id, bytes=totals["bytes"])
     job.message = message
     job.current_path = ""

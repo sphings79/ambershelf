@@ -1,4 +1,4 @@
-# AmberSync - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
+# AmberShelf - Copyright (C) 2026 Dennis Arning - AGPL-3.0-or-later
 """One background worker, one job at a time.
 
 USB disks share the bus, so running two scans in parallel would be slower
@@ -81,7 +81,7 @@ class JobManager:
         self._order: list[int] = []
         self._next_id = 1
         self._current: Job | None = None
-        self._thread = threading.Thread(target=self._run, name="ambersync-worker", daemon=True)
+        self._thread = threading.Thread(target=self._run, name="ambershelf-worker", daemon=True)
         self._thread.start()
 
     # ------------------------------------------------------------ queueing --

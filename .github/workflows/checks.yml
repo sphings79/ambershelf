@@ -24,6 +24,6 @@ jobs:
 
       - name: Run the checks
         env:
-          AMBERSYNC_DATA_DIR: ${{ runner.temp }}/ambersync
-          AMBERSYNC_BACKEND: linux
+          AMBERSHELF_DATA_DIR: ${{ runner.temp }}/ambershelf
+          AMBERSHELF_BACKEND: linux
         run: python tools/checks.py
