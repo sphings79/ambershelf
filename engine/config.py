@@ -33,11 +33,6 @@ EXCLUDED_DIRS = {
     "found.000",
     ".ambershelf",
     ".ambershelf-trash",
-    # The name this project used before it was renamed. Anything already
-    # parked under the old folder stays ignored rather than reappearing as a
-    # pile of strangers on somebody's copy.
-    ".ambersync",
-    ".ambersync-trash",
 }
 EXCLUDED_FILES = {
     ".ds_store",

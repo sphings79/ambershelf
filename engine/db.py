@@ -16,9 +16,6 @@ from engine import config
 
 _local = threading.local()
 
-#: Set once if a database from an earlier name was taken over.
-_adopted: str | None = None
-
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS disks (
     id            INTEGER PRIMARY KEY,
@@ -220,40 +217,10 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-#: The database this project used before it was renamed. Found next to the
-#: new one it is simply taken over - otherwise an update would look exactly
-#: like losing every index, plan and run, which is the last impression a
-#: backup tool should give.
-LEGACY_DB_NAMES = ("ambersync.db",)
-
-
-def adopt_legacy_database() -> str | None:
-    """Take over a database left by an earlier name of this project."""
-    if config.DB_PATH.exists():
-        return None
-    for name in LEGACY_DB_NAMES:
-        old_path = config.DATA_DIR / name
-        if not old_path.exists():
-            continue
-        try:
-            for suffix in ("", "-wal", "-shm"):
-                source = config.DATA_DIR / (name + suffix)
-                if source.exists():
-                    source.rename(config.DB_PATH.with_name(config.DB_PATH.name + suffix))
-        except OSError:
-            return None
-        return name
-    return None
-
-
 def connect() -> sqlite3.Connection:
     connection = getattr(_local, "connection", None)
     if connection is None:
         config.DATA_DIR.mkdir(parents=True, exist_ok=True)
-        global _adopted
-        adopted = adopt_legacy_database()
-        if adopted:
-            _adopted = adopted
         connection = sqlite3.connect(config.DB_PATH, timeout=30, isolation_level=None)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA journal_mode=WAL")
@@ -296,9 +263,6 @@ def initialise() -> None:
     connection.executescript(SCHEMA)
     for key, value in config.DEFAULT_SETTINGS.items():
         connection.execute("INSERT OR IGNORE INTO settings (k, v) VALUES (?, ?)", (key, value))
-    # Only now do the tables exist to say it in.
-    if _adopted:
-        log_event("info", f"took over the database left by {_adopted}", None, "app")
 
 
 def query(sql: str, params: Iterable[Any] = ()) -> list[sqlite3.Row]:
