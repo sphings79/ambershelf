@@ -77,6 +77,7 @@ def templates_have_their_keys() -> None:
         "settings.notify_level.": ("off", "errors", "warnings", "all"),
         "settings.desktop_mode.": ("local", "remote"),
         "login.": ("title", "password", "submit", "logout", "wrong", "locked", "hint"),
+        "first.": ("title", "body", "submit", "hint"),
         "plan.kind.": ("new", "changed", "renamed", "deleted", "slave_only",
                        "out_of_scope", "unreadable"),
         "plan.state.": ("building", "ready", "blocked", "cancelled", "applied"),
@@ -212,6 +213,16 @@ def authentication_holds() -> None:
     if auth.session_valid(token):
         problems.append("a session survived being revoked")
     check("sessions are created, kept and revoked", not problems, "; ".join(problems[:2]))
+
+    # The generated password must open the door and nothing else.
+    db.set_setting(auth.MUST_CHANGE_KEY, "0")
+    db.set_setting(auth.PASSWORD_KEY, "")
+    generated_again = auth.ensure_password()
+    flagged = auth.must_change()
+    auth.set_password("a proper password")
+    cleared = not auth.must_change()
+    check("a generated password has to be replaced before anything else",
+          bool(generated_again) and flagged and cleared)
 
     address = "198.51.100.7"
     auth.clear_failures(address)

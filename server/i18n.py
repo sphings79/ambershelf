@@ -173,6 +173,15 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Ordnerebene für die Aufteilung",
         "settings.language": "Sprache",
         "settings.saved": "Gespeichert.",
+        "first.title": "Passwort festlegen",
+        "first.body":
+            "Du hast dich mit dem erzeugten Passwort angemeldet. Leg jetzt ein "
+            "eigenes fest — bis dahin geht nichts anderes.",
+        "first.submit": "Festlegen und weiter",
+        "first.hint":
+            "Mindestens acht Zeichen. Danach ist das erzeugte Passwort ungültig "
+            "und alle anderen Sitzungen sind beendet.",
+        "password.chosen": "Passwort festgelegt.",
         "login.title": "Anmelden",
         "login.password": "Passwort",
         "login.submit": "Anmelden",
@@ -181,7 +190,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "login.locked": "Zu viele Fehlversuche. Warte kurz.",
         "login.hint":
             "AmberShelf hat einen einzigen Zugang. Beim ersten Start steht das "
-            "erzeugte Passwort im Protokoll des Containers.",
+            "erzeugte Passwort im Protokoll des Containers - danach legst du "
+            "ein eigenes fest.",
         "settings.account": "Zugang",
         "settings.account.help":
             "Ein Passwort für die ganze Anwendung. Beim Ändern werden alle anderen "
@@ -530,6 +540,15 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Folder level used for splitting",
         "settings.language": "Language",
         "settings.saved": "Saved.",
+        "first.title": "Choose a password",
+        "first.body":
+            "You signed in with the generated password. Choose your own now - "
+            "nothing else works until you do.",
+        "first.submit": "Set it and continue",
+        "first.hint":
+            "At least eight characters. Afterwards the generated password stops "
+            "working and every other session is ended.",
+        "password.chosen": "Password set.",
         "login.title": "Sign in",
         "login.password": "Password",
         "login.submit": "Sign in",
@@ -538,7 +557,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "login.locked": "Too many attempts. Wait a moment.",
         "login.hint":
             "AmberShelf has a single way in. On first start the generated password "
-            "is in the container's log.",
+            "is in the container's log - you then choose your own.",
         "settings.account": "Account",
         "settings.account.help":
             "One password for the whole application. Changing it ends every other "

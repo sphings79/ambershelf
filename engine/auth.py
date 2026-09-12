@@ -42,6 +42,12 @@ KEY_LENGTH = 32
 SCRYPT_MAXMEM = 128 * 1024 * 1024
 
 PASSWORD_KEY = "password_hash"
+
+#: Set while the password in use is the one AmberShelf made up. The generated
+#: password gets you through the door and no further: until a real one is
+#: chosen, every page leads back to choosing it.
+MUST_CHANGE_KEY = "password_must_change"
+
 COOKIE_NAME = "ambershelf_session"
 TOKEN_BYTES = 32
 
@@ -90,6 +96,12 @@ def set_password(password: str) -> None:
     if len(password) < 8:
         raise ValueError("a password needs at least eight characters")
     db.set_setting(PASSWORD_KEY, hash_password(password))
+    db.set_setting(MUST_CHANGE_KEY, "0")
+
+
+def must_change() -> bool:
+    """Is the password in use still the one that was made up?"""
+    return db.get_setting(MUST_CHANGE_KEY, "0") == "1"
 
 
 def check_password(password: str) -> bool:
@@ -112,6 +124,7 @@ def ensure_password() -> str | None:
         return None
     password = random_password()
     db.set_setting(PASSWORD_KEY, hash_password(password))
+    db.set_setting(MUST_CHANGE_KEY, "1")
     return password
 
 

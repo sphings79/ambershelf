@@ -95,7 +95,8 @@ die Antwort wird gemerkt:
 - **Ein Passwort, sofern es überhaupt jemand anders erreichen könnte.** scrypt aus der
   Standardbibliothek, serverseitige Sitzungen, Sperre nach fünf Fehlversuchen — und beim
   ersten Start ein erzeugtes Passwort im Protokoll statt eines Einrichtungsbildschirms,
-  den sich jeder schnappen könnte. Aus nur, wenn der Server allein auf loopback hört.
+  den sich jeder schnappen könnte. Es öffnet die Tür ein einziges Mal: Als Erstes wirst
+  du nach einem eigenen gefragt. Aus nur, wenn der Server allein auf loopback hört.
 - **Plattenerkennung, die von innen nicht zu fälschen ist.** Eine Platte wird über
   Dateisystem-UUID und Seriennummer erkannt; die Zuordnung von Platte zu Rolle liegt in
   einer root-eigenen Datei auf dem Host, außerhalb der Reichweite des Containers. Ein
@@ -192,9 +193,10 @@ sich AmberShelf eines aus und schreibt es ins Protokoll:**
 docker compose logs ambershelf | grep -A4 "first start"
 ```
 
-Damit anmelden, dann unter Einstellungen → Zugang ändern. Einen Einrichtungsbildschirm
-gibt es bewusst nicht: Der gehört auf einer erreichbaren Adresse dem, der ihn zuerst
-findet.
+Damit anmeldest du dich, und dann wirst du gebeten, ein eigenes festzulegen — vorher
+geht nichts anderes. Einen Einrichtungsbildschirm gibt es bewusst nicht: Der gehört auf
+einer erreichbaren Adresse dem, der ihn zuerst findet, während ein erzeugtes Passwort im
+Protokoll nur dem die Tür öffnet, der dieses Protokoll ohnehin lesen kann.
 
 Ein Passwort für die ganze Anwendung, mit scrypt aus der Standardbibliothek gehasht.
 Sitzungen liegen serverseitig — das Abmelden wirkt also sofort überall — und fünf

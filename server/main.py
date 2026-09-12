@@ -86,6 +86,10 @@ def local_time(value: str | None) -> str:
 OPEN_PATHS = {"/healthz", "/login"}
 OPEN_PREFIXES = ("/static/",)
 
+#: Reachable while the password still has to be chosen - everything else
+#: leads back to choosing it.
+FIRST_PASSWORD_PATHS = {"/password/first", "/logout", "/language", "/healthz"}
+
 
 @app.middleware("http")
 async def require_login(request: Request, call_next):
@@ -97,6 +101,13 @@ async def require_login(request: Request, call_next):
         return await call_next(request)
 
     if auth.session_valid(request.cookies.get(auth.COOKIE_NAME)):
+        # Signed in with the password AmberShelf made up: that gets you
+        # through the door and no further.
+        if auth.must_change() and path not in FIRST_PASSWORD_PATHS \
+                and not path.startswith(OPEN_PREFIXES):
+            if path.startswith("/api/"):
+                return JSONResponse({"error": "choose a password first"}, status_code=403)
+            return RedirectResponse("/password/first", status_code=303)
         return await call_next(request)
 
     if path.startswith("/api/"):
@@ -167,6 +178,39 @@ def login(request: Request, password: str = Form(...), next: str = Form("/")):
         secure=arrived_securely(request),
         max_age=auth.session_days() * 24 * 3600)
     return response
+
+
+@app.get("/password/first", response_class=HTMLResponse)
+def first_password_page(request: Request):
+    if not config.login_required() or not auth.must_change():
+        return RedirectResponse("/", status_code=303)
+    if not auth.session_valid(request.cookies.get(auth.COOKIE_NAME), touch=False):
+        return RedirectResponse("/login", status_code=303)
+    return render("password_first.html", request,
+                  msg=request.query_params.get("msg"),
+                  level=request.query_params.get("level", "info"))
+
+
+@app.post("/password/first")
+def first_password(request: Request, new_password: str = Form(...),
+                   confirm: str = Form(...)):
+    if not auth.session_valid(request.cookies.get(auth.COOKIE_NAME), touch=False):
+        return RedirectResponse("/login", status_code=303)
+    if not auth.must_change():
+        return RedirectResponse("/", status_code=303)
+
+    if new_password != confirm:
+        return flash(request, "/password/first", "password.mismatch", "error")
+    try:
+        # No current password asked for: it was typed one screen ago, and the
+        # point of this page is that it should stop being used.
+        auth.set_password(new_password)
+    except ValueError:
+        return flash(request, "/password/first", "password.too_short", "error")
+
+    auth.revoke_all(keep=request.cookies.get(auth.COOKIE_NAME))
+    db.log_event("info", "the generated password was replaced", None, "auth")
+    return flash(request, "/", "password.chosen", "ok")
 
 
 @app.post("/logout")

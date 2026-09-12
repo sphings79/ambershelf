@@ -89,9 +89,10 @@ bulk, and the answer is remembered:
 - **A webhook when it matters.** One URL, a small JSON object — Home Assistant, ntfy,
   Gotify or a script of your own. No account anywhere.
 - **A password, unless nobody else could reach it.** scrypt from the standard library,
-  server-side sessions, a lockout after five wrong attempts — and a generated password
-  in the log on first start rather than a setup screen anyone could claim. Off only when
-  the server listens on loopback alone.
+  server-side sessions, a lockout after five wrong attempts — and on first start a
+  generated password in the log rather than a setup screen anyone could claim. It opens
+  the door once: the first thing you are asked for is one of your own. Off only when the
+  server listens on loopback alone.
 - **Disk identity that cannot be faked from inside.** A drive is recognised by its
   filesystem UUID and serial; the mapping from drive to role lives in a root-owned file on
   the host, outside the container's reach. Renaming a folder or cloning a disk cannot flip
@@ -185,8 +186,10 @@ to the log:**
 docker compose logs ambershelf | grep -A4 "first start"
 ```
 
-Sign in with it, then change it under Settings → Account. There is deliberately no setup
-screen: a setup screen on a reachable address belongs to whoever finds it first.
+Sign in with it and you are asked to choose your own before anything else works. There
+is deliberately no setup screen: a setup screen on a reachable address belongs to
+whoever finds it first, while a generated password in the log only opens the door for
+somebody who can already read that log.
 
 One password for the whole application, hashed with scrypt from the standard library.
 Sessions are kept server-side, so signing out takes effect everywhere at once, and five
