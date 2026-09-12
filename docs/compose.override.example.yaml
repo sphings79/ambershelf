@@ -1,0 +1,20 @@
+# Put this next to compose.yaml as compose.override.yaml to run AmberShelf
+# behind a reverse proxy instead of on 127.0.0.1.
+#
+# Docker Compose merges an override file automatically, so `docker compose
+# up -d` picks it up with no further arguments. It is deliberately not part
+# of the repository: every host has its own opinion about networks.
+#
+# A matching Traefik router is in docs/traefik-ambershelf.yml.
+services:
+  ambershelf:
+    # The published file binds 127.0.0.1:8088. Behind a proxy that binding is
+    # not wanted - the proxy reaches the container over the shared network.
+    ports: !reset []
+    networks:
+      - default
+      - proxy
+
+networks:
+  proxy:
+    external: true
