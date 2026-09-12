@@ -133,6 +133,11 @@ class MacBackend:
         except ValueError as exc:
             raise BackendError(str(exc)) from exc
 
+    def unregister(self, fs_uuid: str) -> dict:
+        if not self.registry.remove(fs_uuid):
+            raise BackendError("this disk is not registered")
+        return {"ok": True}
+
     # -------------------------------------------------------------- mounts --
 
     def attach(self, set_name: str) -> MountReport:

@@ -173,6 +173,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Ordnerebene für die Aufteilung",
         "settings.language": "Sprache",
         "settings.saved": "Gespeichert.",
+        "forget.help": "Diese Platte vergessen",
+        "forget.confirm": "Zum Bestätigen {name} eintippen:",
+        "forget.set": "Satz {name} auflösen",
+        "forget.set_confirm": "Zum Auflösen {name} eintippen:",
+        "forget.do": "Vergessen",
+        "forget.done": "Vergessen. Auf der Platte wurde nichts angefasst.",
+        "forget.name_wrong": "Name stimmt nicht — es wurde nichts geändert.",
+        "forget.unknown": "Diese Platte ist nicht registriert.",
+        "forget.busy": "Erst warten, bis der laufende Vorgang fertig ist.",
+        "forget.note":
+            "Vergessen löscht nur, was AmberShelf über die Platte weiß — "
+            "Verzeichnis, Zuteilungen, Verlauf. Auf der Platte selbst wird nichts "
+            "angefasst. Eine Platte, die einmal Master war, lässt sich danach nur "
+            "wieder als Master registrieren; alles andere geht nur auf dem Host.",
         "first.title": "Passwort festlegen",
         "first.body":
             "Du hast dich mit dem erzeugten Passwort angemeldet. Leg jetzt ein "
@@ -540,6 +554,21 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Folder level used for splitting",
         "settings.language": "Language",
         "settings.saved": "Saved.",
+        "forget.help": "Forget this disk",
+        "forget.confirm": "Type {name} to confirm:",
+        "forget.set": "Dissolve set {name}",
+        "forget.set_confirm": "Type {name} to dissolve it:",
+        "forget.do": "Forget",
+        "forget.done": "Forgotten. Nothing on the disk was touched.",
+        "forget.name_wrong": "The name does not match - nothing was changed.",
+        "forget.unknown": "This disk is not registered.",
+        "forget.busy": "Wait until the running job has finished.",
+        "forget.note":
+            "Forgetting removes only what AmberShelf knows about the disk - the "
+            "index, the assignments, the history. Nothing on the disk itself is "
+            "touched. A disk that has been a master can afterwards only be "
+            "registered as a master again; anything else has to be done on the "
+            "host.",
         "first.title": "Choose a password",
         "first.body":
             "You signed in with the generated password. Choose your own now - "

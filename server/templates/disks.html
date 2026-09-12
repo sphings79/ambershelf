@@ -101,9 +101,29 @@
     </div>
   </div>
 
+  {% if sets_in_use %}
+    <div class="actions" style="margin-bottom:12px">
+      {% for name in sets_in_use %}
+        {% if removing_set == name %}
+          <form class="actions" method="post" action="/sets/{{ name }}/forget">
+            <span class="small">{{ t('forget.set_confirm', name=name) }}</span>
+            <input name="confirm" size="14" autocomplete="off" required
+                   placeholder="{{ name }}">
+            <button class="danger">{{ ui.icon('close', 14) }} {{ t('forget.do') }}</button>
+            <a class="button quiet" href="/disks">{{ t('common.cancel') }}</a>
+          </form>
+        {% else %}
+          <a class="button quiet" href="/disks?remove_set={{ name }}">
+            {{ ui.icon('close', 14) }} {{ t('forget.set', name=name) }}</a>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
   {% if not registered %}
     <p class="muted" style="margin:0">{{ t('disks.none_registered') }}</p>
   {% else %}
+    <p class="muted small">{{ t('forget.note') }}</p>
     <div class="table-wrap">
       <table>
         <thead>
@@ -114,6 +134,7 @@
             <th>{{ t('disks.fstype') }}</th>
             <th class="num">{{ t('common.size') }}</th>
             <th>{{ t('disks.uuid') }}</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -126,9 +147,28 @@
               {{ t('role.' ~ d.role) }}</span></td>
             <td>{{ d.set_name }}</td>
             <td class="small">{{ d.fs_type }}</td>
-            <td class="num">{{ d.size_bytes|bytes }}</td>
+            <td class="num">{{ d.size_bytes|bytes }}
+              {% if indexed.get(d.id) %}
+                <div class="faint small">{{ indexed[d.id]|thousands }} {{ t('common.files') }}</div>
+              {% endif %}</td>
             <td><div class="mono small">{{ d.fs_uuid }}</div>
               <div class="faint small mono">{{ d.serial or '' }}</div></td>
+            <td class="right">
+              {% if removing == d.fs_uuid %}
+                <form class="actions" method="post" action="/disks/forget"
+                      style="justify-content:flex-end">
+                  <input type="hidden" name="fs_uuid" value="{{ d.fs_uuid }}">
+                  <span class="small">{{ t('forget.confirm', name=d.display_name) }}</span>
+                  <input name="confirm" size="12" autocomplete="off" required
+                         placeholder="{{ d.display_name }}">
+                  <button class="danger">{{ ui.icon('close', 14) }} {{ t('forget.do') }}</button>
+                  <a class="button quiet" href="/disks">{{ t('common.cancel') }}</a>
+                </form>
+              {% else %}
+                <a class="button quiet" href="/disks?remove={{ d.fs_uuid }}"
+                   title="{{ t('forget.help') }}">{{ ui.icon('close', 14) }}</a>
+              {% endif %}
+            </td>
           </tr>
         {% endfor %}
         </tbody>

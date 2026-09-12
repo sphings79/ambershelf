@@ -505,3 +505,53 @@ def clear_findings(set_name: str, kind: str | None = None) -> int:
 def drop_findings_of_scan(disk_id: int) -> None:
     """A fresh scan of a disk replaces whatever the last one found."""
     execute("DELETE FROM findings WHERE disk_id = ?", (disk_id,))
+
+
+# --------------------------------------------------------------- removal --
+
+def forget_disk(disk_id: int) -> dict:
+    """Drop everything this installation knows about one disk.
+
+    Nothing on the disk itself is touched - this is the index, the plans and
+    the history, not a single file.
+    """
+    removed = {}
+    for table, where, params in (
+        ("plan_items", "slave_disk_id = ?", (disk_id,)),
+        ("run_items", "slave_disk_id = ?", (disk_id,)),
+        ("assignments", "disk_id = ?", (disk_id,)),
+        ("synced", "slave_disk_id = ?", (disk_id,)),
+        ("decisions", "disk_id = ?", (disk_id,)),
+        ("findings", "disk_id = ?", (disk_id,)),
+        ("scans", "disk_id = ?", (disk_id,)),
+        ("files", "disk_id = ?", (disk_id,)),
+        ("disks", "id = ?", (disk_id,)),
+    ):
+        count = execute(f"DELETE FROM {table} WHERE {where}", params).rowcount
+        if count:
+            removed[table] = count
+    return removed
+
+
+def forget_set(set_name: str) -> dict:
+    """Drop a whole set: every disk in it, and everything about the set."""
+    removed: dict[str, int] = {}
+    for row in query("SELECT id FROM disks WHERE set_name = ?", (set_name,)):
+        for table, count in forget_disk(row["id"]).items():
+            removed[table] = removed.get(table, 0) + count
+    for table in ("plan_items", "plans", "run_items", "runs", "assignments",
+                  "findings", "tree_nodes", "synced", "decisions", "sets"):
+        column = "name" if table == "sets" else "set_name"
+        try:
+            count = execute(f"DELETE FROM {table} WHERE {column} = ?",
+                            (set_name,)).rowcount
+        except sqlite3.OperationalError:
+            continue
+        if count:
+            removed[table] = removed.get(table, 0) + count
+    return removed
+
+
+def set_is_empty(set_name: str) -> bool:
+    return not scalar("SELECT 1 FROM disks WHERE set_name = ? LIMIT 1",
+                      (set_name,), 0)

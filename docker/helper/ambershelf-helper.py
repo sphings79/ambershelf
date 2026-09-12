@@ -17,15 +17,17 @@ The guarantees this file exists to provide:
   2. After mounting, the flags are read back from /proc/self/mountinfo. If a
      master is not actually read-only, everything is unmounted again and the
      request fails.
-  3. Roles of already registered disks cannot be changed over the socket, and
-     registrations cannot be removed over the socket. Both require a
-     deliberate action on the host (``--admin``).
+  3. Roles of already registered disks cannot be changed over the socket.
+     Registrations *can* be removed - forgetting a mistyped disk is ordinary
+     work - but a disk that has been a master is written to a retired list,
+     and from then on the socket will only ever register it as a master
+     again. That closes remove-and-re-add, which would otherwise be a way
+     around rule 3.
   4. Only exfat, ntfs and ext4 are accepted, each with a fixed option set
      defined here.
 
-Registration is add-only over the socket on purpose: adding an unknown disk
-is harmless, but re-labelling a known master as a slave would not be, and
-delete-then-re-add would be a way around rule 3.
+Adding an unknown disk is harmless; re-labelling a known master as a slave is
+not. That is the whole shape of what the socket may and may not do.
 """
 from __future__ import annotations
 
@@ -102,6 +104,22 @@ def save_config(data: dict) -> None:
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     os.chmod(tmp, 0o644)
     os.replace(tmp, CONFIG_PATH)
+
+
+def retired_masters(config: dict) -> list[str]:
+    return config.setdefault("retired_masters", [])
+
+
+def retire_master(config: dict, fs_uuid: str) -> None:
+    """Remember that this disk was a master once.
+
+    Nothing else in the file survives a removal, so without this a master
+    could be forgotten and registered again as a copy - which is exactly the
+    transition the socket is not allowed to make.
+    """
+    retired = retired_masters(config)
+    if fs_uuid not in retired:
+        retired.append(fs_uuid)
 
 
 def find_disk(config: dict, fs_uuid: str) -> dict | None:
@@ -398,6 +416,9 @@ def handle(request: dict) -> dict:
     if command == "register":
         return handle_register(request)
 
+    if command == "unregister":
+        return handle_unregister(request)
+
     if command == "mount_set":
         set_name = require_name(request.get("set_name"), "set_name")
         return {"ok": True, **mount_set(set_name)}
@@ -458,6 +479,13 @@ def handle_register(request: dict) -> dict:
         save_config(config)
         return {"ok": True, "disk": existing, "created": False}
 
+    if role != "master" and fs_uuid in retired_masters(config):
+        raise RuntimeError(
+            "this disk has been a master. Registering it as a copy has to be "
+            "done on the host with 'ambershelf-helper --admin forget', "
+            "because otherwise removing a registration would be a way to turn "
+            "a master into a copy.")
+
     if role == "master" and any(
         d["set_name"] == set_name and d["role"] == "master" for d in config["disks"]
     ):
@@ -491,6 +519,28 @@ def handle_register(request: dict) -> dict:
     save_config(config)
     log(f"registered {display_name!r} ({fs_uuid}) as {role} of set {set_name!r}")
     return {"ok": True, "disk": disk, "created": True}
+
+
+def handle_unregister(request: dict) -> dict:
+    """Forget a disk. Its data is never touched - only this file changes."""
+    fs_uuid = require_uuid(request.get("fs_uuid"))
+    config = load_config()
+    disk = find_disk(config, fs_uuid)
+    if disk is None:
+        raise RuntimeError("this disk is not registered")
+
+    mountpoint = mountpoint_for(disk)
+    if is_mounted(mountpoint):
+        raise RuntimeError(
+            f"{disk['display_name']} is still mounted - eject the set first")
+
+    if disk["role"] == "master":
+        retire_master(config, fs_uuid)
+
+    config["disks"] = [d for d in config["disks"] if d["fs_uuid"] != fs_uuid]
+    save_config(config)
+    log(f"unregistered {disk['display_name']!r} ({fs_uuid}, was {disk['role']})")
+    return {"ok": True, "disk": disk}
 
 
 class Handler(socketserver.StreamRequestHandler):
@@ -565,7 +615,10 @@ def admin(argv: list[str]) -> None:
     set_role.add_argument("role", choices=VALID_ROLES)
     remove = sub.add_parser("remove")
     remove.add_argument("fs_uuid")
+    forget = sub.add_parser("forget")
+    forget.add_argument("fs_uuid")
     sub.add_parser("scan")
+    sub.add_parser("retired")
     args = parser.parse_args(argv)
 
     if args.action == "list":
@@ -579,6 +632,18 @@ def admin(argv: list[str]) -> None:
                   f"{disk['fs_uuid']:<38} {disk['fs_type']:<6} {connected}")
         return
 
+    if args.action == "retired":
+        retired = retired_masters(load_config())
+        if not retired:
+            print("no disk has been a master and been removed")
+            return
+        print("these have been a master, so the socket will only register them "
+              "as one again:")
+        for fs_uuid in retired:
+            print(f"  {fs_uuid}")
+        print("\nclear one with: ambershelf-helper --admin forget <fs-uuid>")
+        return
+
     if args.action == "scan":
         for entry in list_block_devices():
             print(f"{entry['path']:<14} {entry['fs_type'] or '-':<6} "
@@ -588,6 +653,19 @@ def admin(argv: list[str]) -> None:
         return
 
     config = load_config()
+
+    if args.action == "forget":
+        retired = retired_masters(config)
+        if args.fs_uuid not in retired:
+            sys.exit(f"{args.fs_uuid} is not on the retired list")
+        print(f"{args.fs_uuid} may be registered as a copy again after this.")
+        if input("type YES to confirm: ") != "YES":
+            sys.exit("cancelled")
+        retired.remove(args.fs_uuid)
+        save_config(config)
+        print("done")
+        return
+
     disk = find_disk(config, args.fs_uuid)
     if disk is None:
         sys.exit(f"{args.fs_uuid} is not registered")
@@ -610,6 +688,10 @@ def admin(argv: list[str]) -> None:
         print(f"removing {disk['display_name']} ({disk['role']} of {disk['set_name']})")
         if input("type YES to confirm: ") != "YES":
             sys.exit("cancelled")
+        if disk["role"] == "master":
+            retire_master(config, args.fs_uuid)
+            print("noted as a former master - registering it as a copy later "
+                  "needs 'ambershelf-helper --admin forget' first")
         config["disks"] = [d for d in config["disks"] if d["fs_uuid"] != args.fs_uuid]
         save_config(config)
         print("done")

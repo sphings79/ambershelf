@@ -410,10 +410,66 @@ def disks_page(request: Request):
         error = None
     except BackendError as exc:
         connected, error = [], str(exc)
+    registered = db.query("SELECT * FROM disks ORDER BY set_name, role DESC")
     return render("disks.html", request, connected=connected, error=error,
-                  registered=db.query("SELECT * FROM disks ORDER BY set_name, role DESC"),
+                  registered=registered,
+                  removing=request.query_params.get("remove"),
+                  removing_set=request.query_params.get("remove_set"),
+                  sets_in_use=sorted({row["set_name"] for row in registered}),
+                  indexed={row["id"]: scanner.scan_state(row["id"])["files"]
+                           for row in registered},
                   msg=request.query_params.get("msg"),
                   level=request.query_params.get("level", "info"))
+
+
+@app.post("/disks/forget")
+def forget_disk(request: Request, fs_uuid: str = Form(...), confirm: str = Form("")):
+    """Forget one disk. What is on it is not touched."""
+    disk = db.disk_by_uuid(fs_uuid.strip())
+    if disk is None:
+        return flash(request, "/disks", "forget.unknown", "error")
+    if confirm != disk["display_name"]:
+        return flash(request, f"/disks?remove={quote(fs_uuid)}", "forget.name_wrong",
+                     "error")
+    if manager.busy_with() is not None:
+        return flash(request, "/disks", "forget.busy", "error")
+
+    name, set_name = disk["display_name"], disk["set_name"]
+    try:
+        backend.unregister(disk["fs_uuid"])
+    except BackendError as exc:
+        return flash(request, "/disks", str(exc), "error")
+
+    removed = db.forget_disk(disk["id"])
+    if db.set_is_empty(set_name):
+        removed.update(db.forget_set(set_name))
+    db.log_event("info", f"{name} forgotten: "
+                         + ", ".join(f"{k} {v}" for k, v in removed.items()),
+                 set_name, "disks")
+    refresh_registrations()
+    return flash(request, "/disks", "forget.done", "ok")
+
+
+@app.post("/sets/{set_name}/forget")
+def forget_whole_set(request: Request, set_name: str, confirm: str = Form("")):
+    if confirm != set_name:
+        return flash(request, f"/disks?remove_set={quote(set_name)}",
+                     "forget.name_wrong", "error")
+    if manager.busy_with() is not None:
+        return flash(request, "/disks", "forget.busy", "error")
+
+    for disk in db.disks_of_set(set_name):
+        try:
+            backend.unregister(disk["fs_uuid"])
+        except BackendError as exc:
+            return flash(request, "/disks", str(exc), "error")
+
+    removed = db.forget_set(set_name)
+    db.log_event("info", f"set {set_name} forgotten: "
+                         + ", ".join(f"{k} {v}" for k, v in removed.items()),
+                 None, "disks")
+    refresh_registrations()
+    return flash(request, "/disks", "forget.done", "ok")
 
 
 @app.post("/disks/register")

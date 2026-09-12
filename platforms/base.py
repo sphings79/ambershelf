@@ -84,6 +84,9 @@ class Backend(Protocol):
     def register(self, fs_uuid: str, role: str, set_name: str,
                  display_name: str) -> dict: ...
 
+    def unregister(self, fs_uuid: str) -> dict:
+        """Forget a disk. Never touches what is on it."""
+
     def attach(self, set_name: str) -> MountReport: ...
 
     def detach(self, set_name: str) -> MountReport: ...

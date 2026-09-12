@@ -106,6 +106,9 @@ class LinuxBackend:
         return call("register", fs_uuid=fs_uuid, role=role,
                     set_name=set_name, display_name=display_name)
 
+    def unregister(self, fs_uuid: str) -> dict:
+        return call("unregister", fs_uuid=fs_uuid)
+
     def attach(self, set_name: str) -> MountReport:
         result = call("mount_set", set_name=set_name)
         return MountReport(attached=result.get("mounted", []),
