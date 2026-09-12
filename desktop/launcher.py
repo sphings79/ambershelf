@@ -73,6 +73,10 @@ def reachable(url: str, timeout: float = 4.0) -> bool:
 
 
 def serve_locally(port: int) -> threading.Thread:
+    # Told before the application is imported: a server that only this
+    # computer can reach does not ask its own user for a password.
+    os.environ["AMBERSHELF_BIND"] = "127.0.0.1"
+
     import uvicorn
     from server.main import app
 

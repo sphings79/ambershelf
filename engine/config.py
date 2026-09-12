@@ -13,6 +13,27 @@ from engine import paths
 DATA_DIR = paths.app_data_dir()
 DB_PATH = DATA_DIR / "ambershelf.db"
 
+# Which address the server was told to listen on. The launcher sets this; a
+# container or a hand-started uvicorn does not, and then a login is required.
+BIND_HOST = os.environ.get("AMBERSHELF_BIND", "").strip().lower()
+LOOPBACK = {"127.0.0.1", "localhost", "::1", "[::1]"}
+
+
+def login_required() -> bool:
+    """Whether the interface asks for a password.
+
+    Off only when the server is demonstrably reachable from this computer
+    alone - the desktop application talking to itself. Anything unknown
+    counts as reachable, because a forgotten switch must never be the reason
+    an interface stands open.
+    """
+    override = os.environ.get("AMBERSHELF_REQUIRE_LOGIN", "auto").strip().lower()
+    if override in ("1", "yes", "true", "on"):
+        return True
+    if override in ("0", "no", "false", "off"):
+        return False
+    return BIND_HOST not in LOOPBACK
+
 DEFAULT_LANGUAGE = os.environ.get("AMBERSHELF_LANGUAGE", "de")
 
 # Read size while hashing. Large enough that a spinning USB disk stays busy,
@@ -83,5 +104,6 @@ DEFAULT_SETTINGS = {
     # window into a view onto an AmberShelf running somewhere else.
     "desktop_mode": "local",
     "desktop_remote_url": "",
+    "session_days": "30",
     "assignment_depth": "2",
 }

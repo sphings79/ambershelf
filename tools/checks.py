@@ -10,6 +10,7 @@ import ast
 import compileall
 import importlib.util
 import io
+import os
 import re
 import sys
 from contextlib import redirect_stdout
@@ -75,6 +76,7 @@ def templates_have_their_keys() -> None:
                            "ransom_note", "double_extension", "burst"),
         "settings.notify_level.": ("off", "errors", "warnings", "all"),
         "settings.desktop_mode.": ("local", "remote"),
+        "login.": ("title", "password", "submit", "logout", "wrong", "locked", "hint"),
         "plan.kind.": ("new", "changed", "renamed", "deleted", "slave_only",
                        "out_of_scope", "unreadable"),
         "plan.state.": ("building", "ready", "blocked", "cancelled", "applied"),
@@ -158,6 +160,84 @@ def integrity_recognises_files() -> None:
           not wrong, "; ".join(wrong[:3]))
 
 
+def authentication_holds() -> None:
+    """The password, the sessions and the lockout, against real input."""
+    sys.path.insert(0, str(ROOT))
+    os.environ.setdefault("AMBERSHELF_DATA_DIR",
+                          str(Path(os.environ.get("RUNNER_TEMP", "/tmp")) / "ambershelf-checks"))
+    from engine import auth, config, db
+
+    db.initialise()
+    wrong = []
+
+    stored = auth.hash_password("correct horse battery")
+    if not auth.verify_password("correct horse battery", stored):
+        wrong.append("the right password was rejected")
+    if auth.verify_password("correct horse batterz", stored):
+        wrong.append("a wrong password was accepted")
+    if auth.verify_password("", stored):
+        wrong.append("an empty password was accepted")
+    if auth.verify_password("x", "not-a-hash"):
+        wrong.append("a malformed hash was accepted")
+    if auth.hash_password("same") == auth.hash_password("same"):
+        wrong.append("two hashes of one password are identical - no salt")
+    check("passwords hash and verify", not wrong, "; ".join(wrong[:2]))
+
+    try:
+        auth.set_password("short")
+        too_short_refused = False
+    except ValueError:
+        too_short_refused = True
+    check("a password under eight characters is refused", too_short_refused)
+
+    generated = auth.random_password()
+    check("the generated password is long enough and unambiguous",
+          len(generated) >= 16 and not (set(generated) & set("Il1O0")))
+
+    token = auth.create_session("192.0.2.1", "checks")
+    other = auth.create_session("192.0.2.2", "checks")
+    problems = []
+    if not auth.session_valid(token):
+        problems.append("a fresh session was not accepted")
+    if auth.session_valid("nonsense"):
+        problems.append("an invented token was accepted")
+    if auth.session_valid(None):
+        problems.append("no token at all was accepted")
+    auth.revoke_all(keep=token)
+    if auth.session_valid(other):
+        problems.append("a revoked session still works")
+    if not auth.session_valid(token):
+        problems.append("the kept session was revoked as well")
+    auth.revoke_session(token)
+    if auth.session_valid(token):
+        problems.append("a session survived being revoked")
+    check("sessions are created, kept and revoked", not problems, "; ".join(problems[:2]))
+
+    address = "198.51.100.7"
+    auth.clear_failures(address)
+    locked_early = auth.locked_for(address) > 0
+    for _ in range(auth.MAX_FAILURES):
+        auth.record_failure(address)
+    locked_after = auth.locked_for(address) > 0
+    auth.clear_failures(address)
+    freed = auth.locked_for(address) == 0
+    check("too many failures lock an address out",
+          not locked_early and locked_after and freed)
+
+    # The one that must never be wrong: an unknown bind address means a login.
+    original = config.BIND_HOST
+    cases = [("127.0.0.1", False), ("localhost", False), ("::1", False),
+             ("0.0.0.0", True), ("192.168.1.5", True), ("", True)]
+    bad = []
+    for host, expected in cases:
+        config.BIND_HOST = host
+        if config.login_required() != expected:
+            bad.append(f"{host or '(unset)'} -> {not expected}")
+    config.BIND_HOST = original
+    check("a login is required unless the server is loopback only",
+          not bad, ", ".join(bad))
+
+
 def imports_resolve() -> None:
     sys.path.insert(0, str(ROOT))
     try:
@@ -218,6 +298,7 @@ def main() -> int:
     compiles()
     imports_resolve()
     integrity_recognises_files()
+    authentication_holds()
     translations_match()
     templates_have_their_keys()
     engine_stays_platform_blind()

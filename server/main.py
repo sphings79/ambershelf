@@ -15,11 +15,12 @@ from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from urllib.parse import quote, urlparse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from engine import apply as apply_engine
-from engine import paths
+from engine import auth, paths
 from engine import compare, config, db, fsutil, notify, planner, scanner
 from engine.jobs import manager
 from platforms import BackendError, backend
@@ -34,6 +35,18 @@ async def lifespan(_: FastAPI):
     db.initialise()
     refresh_registrations()
     db.log_event("info", "AmberShelf started", None, "app")
+
+    if config.login_required():
+        generated = auth.ensure_password()
+        if generated:
+            # Printed rather than offered as a setup screen: a setup screen on
+            # a reachable address belongs to whoever finds it first.
+            banner = "=" * 62
+            print(f"\n{banner}\n  AmberShelf: first start, no password was set.\n"
+                  f"  Sign in with this one and change it in the settings:\n\n"
+                  f"      {generated}\n\n{banner}\n", flush=True)
+            db.log_event("warning", "a password was generated on first start - "
+                                    "it is in the log above", None, "auth")
     yield
 
 
@@ -66,6 +79,129 @@ def local_time(value: str | None) -> str:
         return datetime.fromisoformat(value).astimezone().strftime("%d.%m.%Y %H:%M")
     except ValueError:
         return value
+
+
+#: Reachable without signing in. /healthz because the container health check
+#: needs it, /static because a login page without its stylesheet is a joke.
+OPEN_PATHS = {"/healthz", "/login"}
+OPEN_PREFIXES = ("/static/",)
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    if not config.login_required():
+        return await call_next(request)
+
+    path = request.url.path
+    if path in OPEN_PATHS or path.startswith(OPEN_PREFIXES):
+        return await call_next(request)
+
+    if auth.session_valid(request.cookies.get(auth.COOKIE_NAME)):
+        return await call_next(request)
+
+    if path.startswith("/api/"):
+        return JSONResponse({"error": "login required"}, status_code=401)
+    return RedirectResponse(f"/login?next={quote(path)}", status_code=303)
+
+
+def arrived_securely(request: Request) -> bool:
+    """Was this request made over https, proxy included?
+
+    Checked here as well as through uvicorn's proxy handling, because a
+    session cookie without Secure is the kind of thing that goes unnoticed
+    until it matters.
+    """
+    forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
+    return (forwarded or request.url.scheme).lower() == "https"
+
+
+def client_address(request: Request) -> str:
+    return (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+            or (request.client.host if request.client else "unknown"))
+
+
+def safe_next(target: str | None) -> str:
+    """Only ever redirect back into this application."""
+    if not target or not target.startswith("/") or target.startswith("//"):
+        return "/"
+    if urlparse(target).netloc:
+        return "/"
+    return target
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    if not config.login_required():
+        return RedirectResponse("/", status_code=303)
+    if auth.session_valid(request.cookies.get(auth.COOKIE_NAME), touch=False):
+        return RedirectResponse("/", status_code=303)
+    return render("login.html", request,
+                  next_target=safe_next(request.query_params.get("next")),
+                  msg=request.query_params.get("msg"),
+                  level=request.query_params.get("level", "info"))
+
+
+@app.post("/login")
+def login(request: Request, password: str = Form(...), next: str = Form("/")):
+    target = safe_next(next)
+    address = client_address(request)
+
+    waiting = auth.locked_for(address)
+    if waiting > 0:
+        db.log_event("warning", f"login attempt from {address} while locked out",
+                     None, "auth")
+        return flash(request, f"/login?next={quote(target)}", "login.locked", "error")
+
+    if not auth.check_password(password):
+        auth.record_failure(address)
+        db.log_event("warning", f"failed login from {address}", None, "auth")
+        return flash(request, f"/login?next={quote(target)}", "login.wrong", "error")
+
+    auth.clear_failures(address)
+    token = auth.create_session(address, request.headers.get("user-agent"))
+    db.log_event("info", f"signed in from {address}", None, "auth")
+
+    response = RedirectResponse(target, status_code=303)
+    response.set_cookie(
+        auth.COOKIE_NAME, token, httponly=True, samesite="lax",
+        secure=arrived_securely(request),
+        max_age=auth.session_days() * 24 * 3600)
+    return response
+
+
+@app.post("/logout")
+def logout(request: Request):
+    auth.revoke_session(request.cookies.get(auth.COOKIE_NAME))
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie(auth.COOKIE_NAME)
+    return response
+
+
+@app.post("/settings/password")
+def change_password(request: Request, current: str = Form(...),
+                    new_password: str = Form(...), confirm: str = Form(...)):
+    if not auth.check_password(current):
+        return flash(request, "/settings", "password.wrong_current", "error")
+    if new_password != confirm:
+        return flash(request, "/settings", "password.mismatch", "error")
+    try:
+        auth.set_password(new_password)
+    except ValueError:
+        return flash(request, "/settings", "password.too_short", "error")
+
+    # Everything else that was signed in with the old password goes.
+    kept = request.cookies.get(auth.COOKIE_NAME)
+    dropped = auth.revoke_all(keep=kept)
+    db.log_event("info", f"password changed, {dropped} other session(s) ended",
+                 None, "auth")
+    return flash(request, "/settings", "password.changed", "ok")
+
+
+@app.post("/settings/sessions/revoke")
+def revoke_other_sessions(request: Request):
+    dropped = auth.revoke_all(keep=request.cookies.get(auth.COOKIE_NAME))
+    db.log_event("info", f"{dropped} session(s) ended by hand", None, "auth")
+    return flash(request, "/settings", "sessions.revoked", "ok")
 
 
 # The colour a swatch shows in the settings - the live value lives in CSS.
@@ -119,6 +255,7 @@ def context(request: Request, **extra) -> dict:
         "write_protected": backend.enforces_write_protection,
         "registry_protected": backend.registry_is_protected,
         "is_desktop": paths.desktop_build(),
+        "login_required": config.login_required(),
         "sets": db.all_sets(),
         "open_findings": db.count_open_findings(),
         "active_jobs": [job.as_dict() for job in manager.active()],
@@ -581,6 +718,8 @@ def events_page(request: Request):
 def settings_page(request: Request):
     values = {key: db.get_setting(key) for key in config.DEFAULT_SETTINGS}
     return render("settings.html", request, values=values,
+                  sessions=auth.active_sessions() if config.login_required() else [],
+                  current_token=request.cookies.get(auth.COOKIE_NAME),
                   msg=request.query_params.get("msg"),
                   level=request.query_params.get("level", "info"))
 

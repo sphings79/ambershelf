@@ -88,6 +88,10 @@ bulk, and the answer is remembered:
   second extensions, and a mass change inside one hour. Any finding holds the brake.
 - **A webhook when it matters.** One URL, a small JSON object — Home Assistant, ntfy,
   Gotify or a script of your own. No account anywhere.
+- **A password, unless nobody else could reach it.** scrypt from the standard library,
+  server-side sessions, a lockout after five wrong attempts — and a generated password
+  in the log on first start rather than a setup screen anyone could claim. Off only when
+  the server listens on loopback alone.
 - **Disk identity that cannot be faked from inside.** A drive is recognised by its
   filesystem UUID and serial; the mapping from drive to role lives in a root-owned file on
   the host, outside the container's reach. Renaming a folder or cloning a disk cannot flip
@@ -169,10 +173,38 @@ A ready-made image is published to `ghcr.io/sphings79/ambershelf:latest` for
 `linux/amd64` and `linux/arm64` — point `image:` at it in `compose.yaml` if you would
 rather not build.
 
-The interface listens on `127.0.0.1:8088`. Put it behind a reverse proxy and restrict it
-to your own network — it has no authentication of its own on purpose, because every
-deployment already has an opinion about that. A Traefik file-provider example is in
-[`docs/traefik-ambershelf.yml`](docs/traefik-ambershelf.yml).
+The interface listens on `127.0.0.1:8088`.
+
+### Signing in
+
+Anything not reachable on loopback alone asks for a password — which is every container
+and every reverse-proxied setup. **On first start AmberShelf makes one up and writes it
+to the log:**
+
+```bash
+docker compose logs ambershelf | grep -A4 "first start"
+```
+
+Sign in with it, then change it under Settings → Account. There is deliberately no setup
+screen: a setup screen on a reachable address belongs to whoever finds it first.
+
+One password for the whole application, hashed with scrypt from the standard library.
+Sessions are kept server-side, so signing out takes effect everywhere at once, and five
+wrong attempts from one address buy it a pause.
+
+The desktop applications running locally listen on `127.0.0.1` only and do not ask —
+they would be asking their own user. Point one at a remote AmberShelf and it signs in
+like any browser would.
+
+### Behind a reverse proxy
+
+Copy [`docs/compose.override.example.yaml`](docs/compose.override.example.yaml) to
+`compose.override.yaml` next to `compose.yaml`; Docker Compose merges it automatically.
+It drops the localhost binding and joins the proxy network. A matching Traefik router is
+in [`docs/traefik-ambershelf.yml`](docs/traefik-ambershelf.yml).
+
+Restrict it to your own network anyway. A password is one lock; an interface that can
+delete files on a backup disk deserves two.
 
 ## Using it
 

@@ -26,4 +26,12 @@ EXPOSE 8080
 HEALTHCHECK --interval=60s --timeout=5s --start-period=10s \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=4).status == 200 else 1)"
 
-CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers"]
+# --forwarded-allow-ips is needed for --proxy-headers to be believed at all:
+# uvicorn trusts those headers only from 127.0.0.1 by default, and a reverse
+# proxy in a container network is not that. Without it the application thinks
+# every request arrived over plain http and never marks its cookie Secure.
+#
+# This container therefore belongs behind a proxy or on loopback, never
+# published straight onto an untrusted network.
+CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8080", \
+     "--proxy-headers", "--forwarded-allow-ips", "*"]

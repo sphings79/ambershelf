@@ -1,0 +1,61 @@
+{% import "_icons.html" as ui %}
+<!doctype html>
+<html lang="{{ lang }}"{% if theme != 'system' %} data-theme="{{ theme }}"{% endif %} data-accent="{{ accent }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ t('login.title') }} · {{ t('app.name') }}</title>
+<script>
+  (function () {
+    var root = document.documentElement;
+    if (root.dataset.theme) return;
+    var query = window.matchMedia('(prefers-color-scheme: dark)');
+    var apply = function () { root.dataset.theme = query.matches ? 'dark' : 'light'; };
+    apply();
+    query.addEventListener('change', apply);
+  })();
+</script>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🟠</text></svg>">
+</head>
+<body class="centred">
+
+<main class="gate">
+  <div class="gate-brand">
+    <span class="brand-mark">{{ ui.icon('disk', 20) }}</span>
+    <div>
+      <span class="brand-name">{{ t('app.name') }}</span>
+      <span class="brand-sub">{{ t('app.tagline') }}</span>
+    </div>
+  </div>
+
+  {% if msg %}
+    <div class="note {{ level }}">
+      <span class="note-icon">
+        {{ ui.icon('alert' if level == 'error' else 'info', 18) }}
+      </span>
+      <div>{{ msg }}</div>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/login" class="gate-form">
+    <input type="hidden" name="next" value="{{ next_target }}">
+    <label class="field">
+      <span>{{ t('login.password') }}</span>
+      <input type="password" name="password" autocomplete="current-password"
+             autofocus required>
+    </label>
+    <button class="primary">{{ ui.icon('lock', 15) }} {{ t('login.submit') }}</button>
+  </form>
+
+  <p class="gate-hint">{{ t('login.hint') }}</p>
+
+  <form class="segmented gate-lang" method="post" action="/language">
+    {% for code, name in languages.items() %}
+      <button name="lang" value="{{ code }}" class="{{ 'on' if code == lang }}">{{ code|upper }}</button>
+    {% endfor %}
+  </form>
+</main>
+
+</body>
+</html>

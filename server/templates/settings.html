@@ -100,6 +100,63 @@
     </div>
   </section>
 
+  {% if login_required %}
+  <section class="card">
+    <div class="card-head">
+      <h2>{{ t('settings.account') }}</h2>
+      <span class="chip outline">{{ ui.icon('lock', 12) }}</span>
+    </div>
+    <p class="muted small" style="margin-top:-6px">{{ t('settings.account.help') }}</p>
+    <div class="field-grid">
+      <label class="field"><span>{{ t('settings.password.current') }}</span>
+        <input type="password" name="current" autocomplete="current-password"
+               form="password-form"></label>
+      <label class="field"><span>{{ t('settings.password.new') }}</span>
+        <input type="password" name="new_password" autocomplete="new-password"
+               form="password-form"></label>
+      <label class="field"><span>{{ t('settings.password.confirm') }}</span>
+        <input type="password" name="confirm" autocomplete="new-password"
+               form="password-form"></label>
+    </div>
+    <div class="actions" style="margin-top:16px">
+      <button class="primary" form="password-form">
+        {{ ui.icon('check', 15) }} {{ t('settings.password.change') }}</button>
+    </div>
+
+    <h3 style="margin-top:22px">{{ t('settings.sessions') }}</h3>
+    <div class="table-wrap" style="margin-top:8px">
+      <table>
+        <thead>
+          <tr>
+            <th>{{ t('settings.sessions.address') }}</th>
+            <th>{{ t('settings.sessions.agent') }}</th>
+            <th>{{ t('settings.sessions.last_seen') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for s in sessions %}
+          <tr>
+            <td class="mono small">{{ s.address or '—' }}
+              {% if s.token == current_token %}
+                <span class="chip ok">{{ t('settings.sessions.this_one') }}</span>
+              {% endif %}
+            </td>
+            <td class="small muted">{{ (s.user_agent or '—')[:60] }}</td>
+            <td class="small muted" style="white-space:nowrap">{{ s.last_seen_at|dt }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if sessions|length > 1 %}
+      <div class="actions" style="margin-top:12px">
+        <button class="danger" form="revoke-form">
+          {{ ui.icon('close', 15) }} {{ t('settings.sessions.revoke') }}</button>
+      </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
   {% if is_desktop %}
   <section class="card">
     <div class="card-head"><h2>{{ t('settings.connection') }}</h2></div>
@@ -151,4 +208,9 @@
     </div>
   </section>
 </form>
+
+{% if login_required %}
+  <form id="password-form" method="post" action="/settings/password"></form>
+  <form id="revoke-form" method="post" action="/settings/sessions/revoke"></form>
+{% endif %}
 {% endblock %}

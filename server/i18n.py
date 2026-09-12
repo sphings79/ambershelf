@@ -173,6 +173,34 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Ordnerebene für die Aufteilung",
         "settings.language": "Sprache",
         "settings.saved": "Gespeichert.",
+        "login.title": "Anmelden",
+        "login.password": "Passwort",
+        "login.submit": "Anmelden",
+        "login.logout": "Abmelden",
+        "login.wrong": "Falsches Passwort.",
+        "login.locked": "Zu viele Fehlversuche. Warte kurz.",
+        "login.hint":
+            "AmberShelf hat einen einzigen Zugang. Beim ersten Start steht das "
+            "erzeugte Passwort im Protokoll des Containers.",
+        "settings.account": "Zugang",
+        "settings.account.help":
+            "Ein Passwort für die ganze Anwendung. Beim Ändern werden alle anderen "
+            "Sitzungen beendet.",
+        "settings.password.current": "Bisheriges Passwort",
+        "settings.password.new": "Neues Passwort",
+        "settings.password.confirm": "Neues Passwort wiederholen",
+        "settings.password.change": "Passwort ändern",
+        "settings.sessions": "Angemeldete Geräte",
+        "settings.sessions.address": "Adresse",
+        "settings.sessions.agent": "Programm",
+        "settings.sessions.last_seen": "Zuletzt gesehen",
+        "settings.sessions.this_one": "dieses hier",
+        "settings.sessions.revoke": "Alle anderen abmelden",
+        "sessions.revoked": "Andere Sitzungen beendet.",
+        "password.changed": "Passwort geändert, andere Sitzungen beendet.",
+        "password.wrong_current": "Das bisherige Passwort stimmt nicht.",
+        "password.mismatch": "Die beiden neuen Passwörter sind verschieden.",
+        "password.too_short": "Mindestens acht Zeichen.",
         "settings.connection": "Verbindung",
         "settings.connection.help":
             "Diese App kann das Rechenwerk selbst betreiben oder ein Fenster auf "
@@ -502,6 +530,34 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Folder level used for splitting",
         "settings.language": "Language",
         "settings.saved": "Saved.",
+        "login.title": "Sign in",
+        "login.password": "Password",
+        "login.submit": "Sign in",
+        "login.logout": "Sign out",
+        "login.wrong": "Wrong password.",
+        "login.locked": "Too many attempts. Wait a moment.",
+        "login.hint":
+            "AmberShelf has a single way in. On first start the generated password "
+            "is in the container's log.",
+        "settings.account": "Account",
+        "settings.account.help":
+            "One password for the whole application. Changing it ends every other "
+            "session.",
+        "settings.password.current": "Current password",
+        "settings.password.new": "New password",
+        "settings.password.confirm": "Repeat the new password",
+        "settings.password.change": "Change the password",
+        "settings.sessions": "Signed-in devices",
+        "settings.sessions.address": "Address",
+        "settings.sessions.agent": "Program",
+        "settings.sessions.last_seen": "Last seen",
+        "settings.sessions.this_one": "this one",
+        "settings.sessions.revoke": "Sign out everything else",
+        "sessions.revoked": "Other sessions ended.",
+        "password.changed": "Password changed, other sessions ended.",
+        "password.wrong_current": "The current password is wrong.",
+        "password.mismatch": "The two new passwords differ.",
+        "password.too_short": "At least eight characters.",
         "settings.connection": "Connection",
         "settings.connection.help":
             "This application can run the engine itself, or be a window onto an "

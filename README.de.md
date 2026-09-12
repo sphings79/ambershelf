@@ -92,6 +92,10 @@ die Antwort wird gemerkt:
   Befund hält die Notbremse.
 - **Eine Benachrichtigung, wenn es darauf ankommt.** Eine Adresse, ein kleines JSON —
   Home Assistant, ntfy, Gotify oder ein eigenes Skript. Kein Konto irgendwo.
+- **Ein Passwort, sofern es überhaupt jemand anders erreichen könnte.** scrypt aus der
+  Standardbibliothek, serverseitige Sitzungen, Sperre nach fünf Fehlversuchen — und beim
+  ersten Start ein erzeugtes Passwort im Protokoll statt eines Einrichtungsbildschirms,
+  den sich jeder schnappen könnte. Aus nur, wenn der Server allein auf loopback hört.
 - **Plattenerkennung, die von innen nicht zu fälschen ist.** Eine Platte wird über
   Dateisystem-UUID und Seriennummer erkannt; die Zuordnung von Platte zu Rolle liegt in
   einer root-eigenen Datei auf dem Host, außerhalb der Reichweite des Containers. Ein
@@ -176,10 +180,39 @@ Ein fertiges Image liegt unter `ghcr.io/sphings79/ambershelf:latest` für `linux
 und `linux/arm64` — trag es in `compose.yaml` bei `image:` ein, wenn du nicht selbst
 bauen willst.
 
-Die Oberfläche hört auf `127.0.0.1:8088`. Stell sie hinter einen Reverse Proxy und
-beschränke sie auf dein eigenes Netz — sie hat bewusst keine eigene Anmeldung, weil jede
-Installation dazu ohnehin schon eine Meinung hat. Ein Traefik-Beispiel für den
-Datei-Provider liegt in [`docs/traefik-ambershelf.yml`](docs/traefik-ambershelf.yml).
+Die Oberfläche hört auf `127.0.0.1:8088`.
+
+### Anmelden
+
+Alles, was nicht allein über loopback erreichbar ist, verlangt ein Passwort — also jeder
+Container und jede Installation hinter einem Reverse Proxy. **Beim ersten Start denkt
+sich AmberShelf eines aus und schreibt es ins Protokoll:**
+
+```bash
+docker compose logs ambershelf | grep -A4 "first start"
+```
+
+Damit anmelden, dann unter Einstellungen → Zugang ändern. Einen Einrichtungsbildschirm
+gibt es bewusst nicht: Der gehört auf einer erreichbaren Adresse dem, der ihn zuerst
+findet.
+
+Ein Passwort für die ganze Anwendung, mit scrypt aus der Standardbibliothek gehasht.
+Sitzungen liegen serverseitig — das Abmelden wirkt also sofort überall — und fünf
+Fehlversuche von einer Adresse kosten eine Pause.
+
+Die Desktop-Apps hören örtlich nur auf `127.0.0.1` und fragen nicht; sie würden ihren
+eigenen Benutzer fragen. Richtet man eine auf ein entferntes AmberShelf, meldet sie sich
+an wie jeder Browser.
+
+### Hinter einem Reverse Proxy
+
+`docs/compose.override.example.yaml` als `compose.override.yaml` neben `compose.yaml`
+legen — Docker Compose führt sie von selbst zusammen. Sie nimmt die
+localhost-Bindung weg und hängt den Container ins Proxy-Netz. Ein passender
+Traefik-Router liegt in [`docs/traefik-ambershelf.yml`](docs/traefik-ambershelf.yml).
+
+Beschränke sie trotzdem auf dein eigenes Netz. Ein Passwort ist ein Schloss; eine
+Oberfläche, die Dateien auf Sicherungsplatten löschen kann, verdient zwei.
 
 ## Benutzung
 

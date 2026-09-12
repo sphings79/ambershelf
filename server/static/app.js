@@ -72,8 +72,17 @@
 
   function poll() {
     fetch("/api/jobs", { cache: "no-store" })
-      .then(function (response) { return response.json(); })
+      .then(function (response) {
+        // The session can expire while a page sits open; say so rather than
+        // leaving a progress panel that quietly stopped moving.
+        if (response.status === 401) {
+          window.location.href = "/login";
+          return null;
+        }
+        return response.json();
+      })
       .then(function (data) {
+        if (!data) { return; }
         render(data.active);
         var busy = data.active.length > 0;
         // A finished job changes what the page below shows, so reload once.

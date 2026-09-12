@@ -195,6 +195,16 @@ CREATE TABLE IF NOT EXISTS findings (
 
 CREATE INDEX IF NOT EXISTS idx_findings ON findings (set_name, cleared, kind);
 
+-- Server-side sessions. The cookie carries nothing but the token, so signing
+-- it would add a dependency for no gain, and logging out takes effect at once.
+CREATE TABLE IF NOT EXISTS sessions (
+    token        TEXT PRIMARY KEY,
+    created_at   TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    address      TEXT,
+    user_agent   TEXT
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS settings (
     k TEXT PRIMARY KEY,
     v TEXT NOT NULL
