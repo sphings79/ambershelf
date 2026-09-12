@@ -55,6 +55,24 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
+def static_version() -> str:
+    """Changes whenever the stylesheet or the script does.
+
+    Appended to their addresses, so an updated AmberShelf is not half the new
+    interface and half whatever the browser kept from last week.
+    """
+    newest = 0.0
+    for name in ("style.css", "app.js"):
+        try:
+            newest = max(newest, (BASE_DIR / "static" / name).stat().st_mtime)
+        except OSError:
+            pass
+    return str(int(newest))
+
+
+STATIC_VERSION = static_version()
+
+
 def refresh_registrations() -> None:
     """Pull the host registry into the database. The host stays the authority."""
     try:
@@ -299,6 +317,7 @@ def context(request: Request, **extra) -> dict:
         "write_protected": backend.enforces_write_protection,
         "registry_protected": backend.registry_is_protected,
         "is_desktop": paths.desktop_build(),
+        "static_version": STATIC_VERSION,
         "login_required": config.login_required(),
         "sets": db.all_sets(),
         "open_findings": db.count_open_findings(),
@@ -405,14 +424,25 @@ def set_state(set_name: str) -> dict:
 @app.get("/disks", response_class=HTMLResponse)
 def disks_page(request: Request):
     refresh_registrations()
+    show_all = request.query_params.get("all") == "1"
     try:
-        connected = [volume.as_dict() for volume in backend.list_volumes()]
+        volumes = [volume.as_dict() for volume in backend.list_volumes()]
         error = None
     except BackendError as exc:
-        connected, error = [], str(exc)
+        volumes, error = [], str(exc)
+
+    # A backup disk is one you can unplug. Everything else is hidden unless
+    # asked for, and anything belonging to the running system is never
+    # offered at all - the helper refuses those anyway.
+    usable = [v for v in volumes if not v["system"]]
+    removable = [v for v in usable if v["removable"]]
+    connected = usable if show_all else removable
+    hidden = len(volumes) - len(connected)
     registered = db.query("SELECT * FROM disks ORDER BY set_name, role DESC")
     return render("disks.html", request, connected=connected, error=error,
                   registered=registered,
+                  show_all=show_all, hidden=hidden,
+                  system_count=sum(1 for v in volumes if v["system"]),
                   removing=request.query_params.get("remove"),
                   removing_set=request.query_params.get("remove_set"),
                   sets_in_use=sorted({row["set_name"] for row in registered}),

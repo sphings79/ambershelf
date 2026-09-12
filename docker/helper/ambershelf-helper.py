@@ -66,6 +66,24 @@ FS_OPTIONS = {
 FS_DRIVER = {"exfat": "exfat", "ntfs": "ntfs3", "ntfs3": "ntfs3", "ext4": "ext4"}
 
 VALID_ROLES = ("master", "slave")
+
+#: Filesystems that are never a backup disk, whatever else is true of them.
+SYSTEM_FILESYSTEMS = {"swap", "linux_raid_member", "lvm2_member", "crypto_luks",
+                      "zfs_member", "ddf_raid_member", "isw_raid_member"}
+
+#: A volume mounted anywhere outside these is part of the running system -
+#: the root filesystem, /boot, /home. Registering one of those as a copy
+#: would have AmberShelf write into the machine it runs on.
+REMOVABLE_MOUNT_ROOTS = ("/mnt", "/media", "/run/media")
+
+
+def is_system_partition(entry: dict) -> bool:
+    if (entry.get("fs_type") or "").lower() in SYSTEM_FILESYSTEMS:
+        return True
+    mountpoint = entry.get("mountpoint")
+    if mountpoint:
+        return not mountpoint.startswith(REMOVABLE_MOUNT_ROOTS)
+    return False
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$")
 UUID_RE = re.compile(r"^[A-Za-z0-9-]{4,40}$")
 
@@ -168,6 +186,7 @@ def list_block_devices() -> list[dict]:
             "vendor": (node.get("vendor") or (parent or {}).get("vendor") or "").strip(),
         }
         if entry["type"] == "part" and entry["fs_type"]:
+            entry["system"] = is_system_partition(entry)
             result.append(entry)
         for child in node.get("children") or []:
             walk(child, entry)
@@ -501,6 +520,13 @@ def handle_register(request: dict) -> dict:
         raise RuntimeError("this disk is not connected, so it cannot be registered")
     if (detected["fs_type"] or "").lower() not in FS_OPTIONS:
         raise RuntimeError(f"filesystem {detected['fs_type']!r} is not supported")
+    if detected.get("system"):
+        # The root filesystem as a "copy" would mean AmberShelf writing into
+        # the machine it runs on. There is no sensible reason to allow it.
+        raise RuntimeError(
+            f"{detected['path']} belongs to the running system"
+            + (f" (mounted at {detected['mountpoint']})" if detected["mountpoint"] else "")
+            + " and cannot be registered")
 
     disk = {
         "fs_uuid": fs_uuid,
@@ -646,10 +672,16 @@ def admin(argv: list[str]) -> None:
 
     if args.action == "scan":
         for entry in list_block_devices():
+            marks = []
+            if entry.get("system"):
+                marks.append("system")
+            if entry.get("removable"):
+                marks.append("removable")
             print(f"{entry['path']:<14} {entry['fs_type'] or '-':<6} "
                   f"{(entry['fs_uuid'] or '-'):<38} {(entry['label'] or '-'):<20} "
                   f"{int(entry['size']) / 1024**3:8.1f} GB  "
-                  f"{'usb' if entry['transport'] == 'usb' else entry['transport'] or '-'}")
+                  f"{'usb' if entry['transport'] == 'usb' else entry['transport'] or '-':<6} "
+                  f"{' '.join(marks)}")
         return
 
     config = load_config()

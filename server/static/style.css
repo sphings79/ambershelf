@@ -405,7 +405,10 @@ select { cursor: pointer; }
 
 .table-wrap {
   border: 1px solid var(--border); border-radius: var(--radius);
-  overflow: hidden; background: var(--surface-1);
+  background: var(--surface-1);
+  /* A narrow window must scroll the table, not quietly cut the last column
+     off - which is where the buttons live. */
+  overflow-x: auto;
 }
 table { width: 100%; border-collapse: collapse; }
 th {
@@ -418,7 +421,11 @@ td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align:
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: var(--surface-2); }
 .num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-.mono { font-family: var(--font-mono); font-size: 12.5px; word-break: break-all; }
+.mono { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: anywhere; }
+/* Identifiers already carry their own break points; breaking mid-group turns
+   a UUID into a column of rubble. */
+.mono.id { overflow-wrap: normal; word-break: normal; white-space: nowrap; }
+td.id-cell { min-width: 20ch; }
 .muted { color: var(--text-muted); }
 .faint { color: var(--text-faint); }
 .small { font-size: 12px; }

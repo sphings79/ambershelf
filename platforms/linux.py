@@ -93,6 +93,7 @@ class LinuxBackend:
                 size=int(entry.get("size") or 0),
                 mountpoint=entry.get("mountpoint"),
                 removable=bool(entry.get("removable")),
+                system=bool(entry.get("system")),
                 model=entry.get("model"),
                 registration=entry.get("registration"),
             ))

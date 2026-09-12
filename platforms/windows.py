@@ -69,6 +69,7 @@ foreach ($v in Get-Volume) {
         Model       = if ($disk) { [string]$disk.FriendlyName } else { $null }
         BusType     = if ($disk) { [string]$disk.BusType } else { $null }
         ReadOnly    = if ($disk) { [bool]$disk.IsReadOnly } else { $false }
+        IsSystem    = ($letter + ":") -eq $env:SystemDrive
     }
 }
 ConvertTo-Json -InputObject $rows -Depth 3 -Compress
@@ -164,6 +165,7 @@ class WindowsBackend:
                 removable=(row.get("DriveType") == "Removable"
                            or row.get("BusType") in ("USB", "SD", "MMC")),
                 read_only=bool(row.get("ReadOnly")),
+                system=bool(row.get("IsSystem")),
                 model=(row.get("Model") or None),
                 registration=known.get(uuid),
             ))
@@ -185,6 +187,8 @@ class WindowsBackend:
         volume = self.volume_by_uuid(fs_uuid)
         if volume is None:
             raise BackendError("this disk is not connected, so it cannot be registered")
+        if volume.system:
+            raise BackendError(f"{volume.id} is the system drive and cannot be registered")
         if volume.fs_type not in ("exfat", "ntfs", "vfat"):
             raise BackendError(f"filesystem {volume.fs_type!r} is not supported")
         try:

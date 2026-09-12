@@ -78,11 +78,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.display_name": "Anzeigename",
         "disks.set_name": "Satz",
         "disks.already": "bereits registriert",
-        "disks.role_locked": "Rollen und Löschungen nur auf dem Host",
+        "disks.role_locked": "Rollen ändern nur auf dem Host",
         "disks.role_locked_help":
-            "Der Container darf Platten hinzufügen, aber keine Rolle ändern und "
-            "nichts entfernen. Das geht bewusst nur auf dem Host: "
-            "sudo ambershelf-helper --admin set-role <uuid> slave",
+            "Hinzufügen und Vergessen kannst du hier. Eine Rolle ändern nicht — "
+            "das geht bewusst nur auf dem Host: sudo ambershelf-helper --admin "
+            "set-role <uuid> slave. Aus demselben Grund lässt sich eine Platte, "
+            "die einmal Master war, hier nur wieder als Master anlegen.",
         "disks.register_help":
             "Der Master wird immer nur lesend eingehängt. Prüfe die Rolle, bevor "
             "du registrierst — ändern lässt sie sich danach nur noch am Host.",
@@ -173,6 +174,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Ordnerebene für die Aufteilung",
         "settings.language": "Sprache",
         "settings.saved": "Gespeichert.",
+        "disks.system_hidden": "{count} Systempartitionen ausgeblendet",
+        "disks.show_all": "Auch {count} feste Platten zeigen",
+        "disks.only_removable": "Nur Wechseldatenträger",
+        "disks.not_removable": "fest eingebaut",
+        "disks.show_all_warning":
+            "Feste Platten lassen sich nicht abziehen und liegen im selben Gehäuse "
+            "wie der Rechner. Als Sicherungskopie taugen sie nur, wenn du weißt, "
+            "warum. Systempartitionen werden gar nicht erst angeboten.",
         "forget.help": "Diese Platte vergessen",
         "forget.confirm": "Zum Bestätigen {name} eintippen:",
         "forget.set": "Satz {name} auflösen",
@@ -459,11 +468,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.display_name": "Name",
         "disks.set_name": "Set",
         "disks.already": "already registered",
-        "disks.role_locked": "Roles and removals are host-only",
+        "disks.role_locked": "Roles are changed on the host only",
         "disks.role_locked_help":
-            "The container may add disks but can never change a role or remove one. "
-            "That is deliberate and has to be done on the host: "
-            "sudo ambershelf-helper --admin set-role <uuid> slave",
+            "Adding and forgetting happen here. Changing a role does not - that is "
+            "deliberate and has to be done on the host: sudo ambershelf-helper "
+            "--admin set-role <uuid> slave. For the same reason a disk that has "
+            "been a master can only be added here as a master again.",
         "disks.register_help":
             "A master is always mounted read-only. Check the role before registering - "
             "afterwards it can only be changed on the host.",
@@ -554,6 +564,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Folder level used for splitting",
         "settings.language": "Language",
         "settings.saved": "Saved.",
+        "disks.system_hidden": "{count} system partitions hidden",
+        "disks.show_all": "Also show {count} fixed disks",
+        "disks.only_removable": "Removable only",
+        "disks.not_removable": "built in",
+        "disks.show_all_warning":
+            "A fixed disk cannot be unplugged and sits in the same box as the "
+            "computer. It makes a backup copy only if you know why. System "
+            "partitions are not offered at all.",
         "forget.help": "Forget this disk",
         "forget.confirm": "Type {name} to confirm:",
         "forget.set": "Dissolve set {name}",

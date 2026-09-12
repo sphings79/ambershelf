@@ -249,6 +249,29 @@ def authentication_holds() -> None:
           not bad, ", ".join(bad))
 
 
+def system_partitions_are_recognised() -> None:
+    """Never offer the machine's own filesystem as a backup disk."""
+    helper = load(ROOT / "docker" / "helper" / "ambershelf-helper.py")
+    cases = [
+        ({"fs_type": "ext4", "mountpoint": "/"}, True),
+        ({"fs_type": "ext4", "mountpoint": "/home"}, True),
+        ({"fs_type": "vfat", "mountpoint": "/boot/efi"}, True),
+        ({"fs_type": "swap", "mountpoint": None}, True),
+        ({"fs_type": "crypto_LUKS", "mountpoint": None}, True),
+        ({"fs_type": "lvm2_member", "mountpoint": None}, True),
+        # Unmounted external disks and our own mounts are fine.
+        ({"fs_type": "exfat", "mountpoint": None}, False),
+        ({"fs_type": "ntfs", "mountpoint": "/mnt/ambershelf/set/master"}, False),
+        ({"fs_type": "exfat", "mountpoint": "/media/usb"}, False),
+        ({"fs_type": "ext4", "mountpoint": "/run/media/dennis/backup"}, False),
+    ]
+    wrong = [f"{c['fs_type']} at {c['mountpoint']}"
+             for c, expected in cases
+             if helper.is_system_partition(c) is not expected]
+    check(f"the {len(cases)} system-partition cases are judged correctly",
+          not wrong, "; ".join(wrong[:3]))
+
+
 def imports_resolve() -> None:
     sys.path.insert(0, str(ROOT))
     try:
@@ -310,6 +333,7 @@ def main() -> int:
     imports_resolve()
     integrity_recognises_files()
     authentication_holds()
+    system_partitions_are_recognised()
     translations_match()
     templates_have_their_keys()
     engine_stays_platform_blind()

@@ -107,6 +107,9 @@ class MacBackend:
                     removable=bool(info.get("Removable")
                                    or info.get("RemovableMediaOrExternalDevice")),
                     read_only=not info.get("WritableVolume", True),
+                    # Only external disks are listed at all, so a system
+                    # volume never reaches this point.
+                    system=False,
                     model=(info.get("MediaName") or "").strip() or None,
                     registration=known.get(uuid),
                 ))

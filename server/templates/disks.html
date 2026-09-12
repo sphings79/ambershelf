@@ -14,6 +14,18 @@
   <div class="card-head">
     <h2>{{ t('disks.connected') }}</h2>
     <span class="chip outline">{{ connected|length }}</span>
+    {% if system_count %}
+      <span class="chip">{{ ui.icon('lock', 12) }}
+        {{ t('disks.system_hidden', count=system_count) }}</span>
+    {% endif %}
+    <div class="actions">
+      {% if show_all %}
+        <a class="button quiet" href="/disks">{{ t('disks.only_removable') }}</a>
+      {% elif hidden > system_count %}
+        <a class="button quiet" href="/disks?all=1">
+          {{ t('disks.show_all', count=hidden - system_count) }}</a>
+      {% endif %}
+    </div>
   </div>
 
   {% if error %}
@@ -29,6 +41,12 @@
       <span class="note-icon">{{ ui.icon('lock', 18) }}</span>
       <div>{{ t('disks.register_help') }}</div>
     </div>
+    {% if show_all %}
+      <div class="note warn">
+        <span class="note-icon">{{ ui.icon('alert', 18) }}</span>
+        <div>{{ t('disks.show_all_warning') }}</div>
+      </div>
+    {% endif %}
 
     <div class="table-wrap">
       <table>
@@ -47,12 +65,15 @@
             <td>
               <strong>{{ d.label or d.name }}</strong>
               <div class="faint small">{{ d.model or '—' }} · {{ d.path }}</div>
+              {% if not d.removable %}
+                <span class="chip warn">{{ ui.icon('alert', 11) }} {{ t('disks.not_removable') }}</span>
+              {% endif %}
             </td>
             <td><span class="chip outline">{{ d.fs_type }}</span></td>
             <td class="num">{{ d.size|bytes }}</td>
-            <td>
-              <div class="mono small">{{ d.fs_uuid or '—' }}</div>
-              <div class="faint small mono">{{ d.serial or '' }}</div>
+            <td class="id-cell">
+              <div class="mono id small">{{ d.fs_uuid or '—' }}</div>
+              <div class="faint small mono id">{{ d.serial or '' }}</div>
             </td>
             <td>
               {% if d.registration %}
@@ -151,8 +172,8 @@
               {% if indexed.get(d.id) %}
                 <div class="faint small">{{ indexed[d.id]|thousands }} {{ t('common.files') }}</div>
               {% endif %}</td>
-            <td><div class="mono small">{{ d.fs_uuid }}</div>
-              <div class="faint small mono">{{ d.serial or '' }}</div></td>
+            <td class="id-cell"><div class="mono id small">{{ d.fs_uuid }}</div>
+              <div class="faint small mono id">{{ d.serial or '' }}</div></td>
             <td class="right">
               {% if removing == d.fs_uuid %}
                 <form class="actions" method="post" action="/disks/forget"

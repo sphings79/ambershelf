@@ -27,6 +27,9 @@ class Volume:
     mountpoint: str | None = None
     removable: bool = False
     read_only: bool = False
+    #: Part of the running system - the root filesystem, swap, /boot. Never
+    #: registrable, whatever the interface shows.
+    system: bool = False
     model: str | None = None
     registration: dict | None = None
 
@@ -36,6 +39,7 @@ class Volume:
             "fs_uuid": self.fs_uuid, "serial": self.serial, "label": self.label,
             "fs_type": self.fs_type, "size": self.size, "mountpoint": self.mountpoint,
             "removable": self.removable, "read_only": self.read_only,
+            "system": self.system,
             "model": self.model, "registration": self.registration,
         }
 
