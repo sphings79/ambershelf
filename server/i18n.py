@@ -174,6 +174,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Ordnerebene für die Aufteilung",
         "settings.language": "Sprache",
         "settings.saved": "Gespeichert.",
+        "plan.index_now": "Jetzt alle Platten einlesen",
+        "plan.index_hint":
+            "Der erste Lauf prüfsummt alles und dauert bei einem großen Archiv "
+            "Stunden. Er lässt sich anhalten.",
+        "overview.scan_all": "Alle einlesen",
+        "overview.compare.needs_index": "Erst einlesen, dann vergleichen",
+        "scan.started": "Einlesen gestartet.",
+        "scan.none_ready": "Keine Platte bereit — erst den Satz einhängen.",
         "format.help": "Diese Platte formatieren",
         "format.do": "Jetzt löschen und formatieren",
         "format.done": "Formatiert.",
@@ -601,6 +609,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Folder level used for splitting",
         "settings.language": "Language",
         "settings.saved": "Saved.",
+        "plan.index_now": "Index every disk now",
+        "plan.index_hint":
+            "The first run hashes everything and takes hours for a large archive. "
+            "It can be paused.",
+        "overview.scan_all": "Index all",
+        "overview.compare.needs_index": "Index first, then compare",
+        "scan.started": "Indexing started.",
+        "scan.none_ready": "No disk is ready - mount the set first.",
         "format.help": "Format this disk",
         "format.do": "Erase and format now",
         "format.done": "Formatted.",

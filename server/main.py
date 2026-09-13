@@ -351,8 +351,16 @@ def back(request: Request, fallback: str = "/") -> RedirectResponse:
 
 
 def flash(request: Request, url: str, message: str, level: str = "info") -> RedirectResponse:
+    """Carry a message to the next page.
+
+    The message is escaped: it contains whatever the engine or a user typed,
+    and a semicolon or an ampersand in it would otherwise end the parameter
+    and take the rest of the sentence with it.
+    """
     separator = "&" if "?" in url else "?"
-    return RedirectResponse(f"{url}{separator}msg={message}&level={level}", status_code=303)
+    return RedirectResponse(
+        f"{url}{separator}msg={quote(message, safe='')}&level={level}",
+        status_code=303)
 
 
 # ---------------------------------------------------------------- overview --
@@ -411,6 +419,7 @@ def set_state(set_name: str) -> dict:
         "master": next((d for d in disks if d["role"] == "master"), None),
         "slaves": [d for d in disks if d["role"] == "slave"],
         "any_mounted": any(d["mounted"] for d in disks),
+        "needs_index": any(not d["scan"]["complete"] for d in disks),
         "connected_count": sum(1 for d in disks if d["connected"]),
         "all_connected": all(d["connected"] for d in disks) and bool(disks),
         "plan": dict(plan) if plan else None,
@@ -637,6 +646,34 @@ def scan_disk(request: Request, set_name: str, disk_id: int):
         set_name=set_name, disk_id=disk_id,
     )
     return flash(request, "/", "indexing started", "ok")
+
+
+@app.post("/sets/{set_name}/scan-all")
+def scan_all(request: Request, set_name: str):
+    """Index every disk of the set, in order.
+
+    The interface used to state what was missing and leave the user to find
+    the button for it, one disk at a time. Saying what is wrong is only half
+    the job.
+    """
+    queued = []
+    skipped = []
+    for disk in db.disks_of_set(set_name):
+        try:
+            backend.verify_readable(disk)
+        except BackendError:
+            skipped.append(disk["display_name"])
+            continue
+        if manager.busy_with(disk_id=disk["id"]) is not None:
+            continue
+        manager.submit("scan", disk["display_name"],
+                       lambda job, disk_id=disk["id"]: scanner.scan_disk(job, disk_id),
+                       set_name=set_name, disk_id=disk["id"])
+        queued.append(disk["display_name"])
+
+    if not queued:
+        return flash(request, "/", "scan.none_ready", "error")
+    return flash(request, "/", "scan.started", "ok")
 
 
 @app.post("/sets/{set_name}/rehash/{disk_id}")

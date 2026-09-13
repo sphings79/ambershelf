@@ -59,7 +59,9 @@ def readiness(set_name: str) -> dict:
         problems.append({"key": "ready.no_slave", "params": {}})
 
     return {"ready": not problems, "problems": problems,
-            "master": master, "slaves": slaves}
+            "master": master, "slaves": slaves,
+            # Whether the interface can offer to fix this with one button.
+            "can_index": bool(master) and bool(slaves)}
 
 
 def build_scope(connection, set_name: str, depth: int, master_id: int,

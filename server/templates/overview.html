@@ -45,9 +45,20 @@
           <button>{{ ui.icon('mount', 15) }} {{ t('overview.mount') }}</button>
         </form>
       {% endif %}
-      <form class="inline" method="post" action="/sets/{{ s.name }}/compare">
-        <button class="primary">{{ ui.icon('compare', 15) }} {{ t('overview.compare') }}</button>
-      </form>
+      {% if s.needs_index %}
+        <form class="inline" method="post" action="/sets/{{ s.name }}/scan-all">
+          <button class="primary" {{ 'disabled' if not s.any_mounted }}>
+            {{ ui.icon('scan', 15) }} {{ t('overview.scan_all') }}</button>
+        </form>
+        <form class="inline" method="post" action="/sets/{{ s.name }}/compare">
+          <button title="{{ t('overview.compare.needs_index') }}">
+            {{ ui.icon('compare', 15) }} {{ t('overview.compare') }}</button>
+        </form>
+      {% else %}
+        <form class="inline" method="post" action="/sets/{{ s.name }}/compare">
+          <button class="primary">{{ ui.icon('compare', 15) }} {{ t('overview.compare') }}</button>
+        </form>
+      {% endif %}
     </div>
   </div>
 

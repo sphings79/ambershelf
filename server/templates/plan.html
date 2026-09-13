@@ -23,9 +23,16 @@
 {% if not readiness.ready %}
   <div class="note warn">
     <span class="note-icon">{{ ui.icon('alert', 18) }}</span>
-    <div>
+    <div style="flex:1">
       <strong>{{ t('plan.not_ready') }}</strong>
       <ul>{% for p in readiness.problems %}<li>{{ msg_of(p) }}</li>{% endfor %}</ul>
+      {% if readiness.can_index %}
+        <form class="actions" method="post" action="/sets/{{ set_name }}/scan-all"
+              style="margin-top:10px">
+          <button class="primary">{{ ui.icon('scan', 15) }} {{ t('plan.index_now') }}</button>
+          <span class="small muted">{{ t('plan.index_hint') }}</span>
+        </form>
+      {% endif %}
     </div>
   </div>
 {% endif %}
