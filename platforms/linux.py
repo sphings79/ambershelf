@@ -95,6 +95,8 @@ class LinuxBackend:
                 removable=bool(entry.get("removable")),
                 system=bool(entry.get("system")),
                 ignored=bool(entry.get("ignored")),
+                usable=bool(entry.get("usable", True)),
+                reason=entry.get("reason"),
                 model=entry.get("model"),
                 registration=entry.get("registration"),
             ))

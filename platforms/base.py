@@ -33,12 +33,28 @@ class Volume:
     #: Put out of reach by the user: never listed, never registered, never
     #: mounted.
     ignored: bool = False
+    #: False when there is nothing AmberShelf can work with here.
+    usable: bool = True
+    #: Why not, as a key the interface can translate.
+    reason: str | None = None
     model: str | None = None
     registration: dict | None = None
 
+    def suggested_name(self) -> str:
+        """What to put in the name field - never a device path.
+
+        The path contains slashes, which a name may not, so offering it as a
+        default meant offering something the next screen would refuse.
+        """
+        for candidate in (self.label, self.model):
+            if candidate and candidate.strip():
+                return candidate.strip()[:63]
+        return self.id.rsplit("/", 1)[-1].strip(":\\") or "Platte"
+
     def as_dict(self) -> dict:
         return {
-            "id": self.id, "path": self.id, "name": self.label or self.id,
+            "id": self.id, "path": self.id, "name": self.suggested_name(),
+            "usable": self.usable, "reason": self.reason,
             "fs_uuid": self.fs_uuid, "serial": self.serial, "label": self.label,
             "fs_type": self.fs_type, "size": self.size, "mountpoint": self.mountpoint,
             "removable": self.removable, "read_only": self.read_only,

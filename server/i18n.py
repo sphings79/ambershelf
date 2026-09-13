@@ -174,6 +174,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Ordnerebene für die Aufteilung",
         "settings.language": "Sprache",
         "settings.saved": "Gespeichert.",
+        "disks.reason.no_filesystem": "kein Dateisystem — erst formatieren",
+        "disks.reason.unsupported_filesystem": "Dateisystem wird nicht unterstützt",
+        "disks.unusable_note":
+            "Platten ohne brauchbares Dateisystem stehen mit dem Grund dabei, "
+            "statt einfach zu fehlen. Formatiere sie als exFAT, wenn sie auch am "
+            "Mac und unter Windows lesbar sein sollen.",
         "exclude.title": "Dauerhaft ausgeschlossen",
         "exclude.help": "Diese Platte dauerhaft ausschließen",
         "exclude.hidden": "{count} ausgeschlossen",
@@ -574,6 +580,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Folder level used for splitting",
         "settings.language": "Language",
         "settings.saved": "Saved.",
+        "disks.reason.no_filesystem": "no filesystem - format it first",
+        "disks.reason.unsupported_filesystem": "filesystem is not supported",
+        "disks.unusable_note":
+            "A disk with nothing readable on it is listed with the reason rather "
+            "than simply missing. Format it as exFAT if it also has to work on "
+            "macOS and Windows.",
         "exclude.title": "Excluded for good",
         "exclude.help": "Exclude this disk for good",
         "exclude.hidden": "{count} excluded",

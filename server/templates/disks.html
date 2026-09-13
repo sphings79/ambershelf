@@ -43,7 +43,8 @@
   {% else %}
     <div class="note">
       <span class="note-icon">{{ ui.icon('lock', 18) }}</span>
-      <div>{{ t('disks.register_help') }}</div>
+      <div>{{ t('disks.register_help') }}
+        <p class="small">{{ t('disks.unusable_note') }}</p></div>
     </div>
     {% if show_all %}
       <div class="note warn">
@@ -74,14 +75,23 @@
                 <span class="chip warn">{{ ui.icon('alert', 11) }} {{ t('disks.not_removable') }}</span>
               {% endif %}
             </td>
-            <td><span class="chip outline">{{ d.fs_type }}</span></td>
+            <td>
+              {% if d.fs_type %}
+                <span class="chip outline">{{ d.fs_type }}</span>
+              {% else %}
+                <span class="faint">—</span>
+              {% endif %}
+            </td>
             <td class="num">{{ d.size|bytes }}</td>
             <td class="id-cell">
               <div class="mono id small">{{ d.fs_uuid or '—' }}</div>
               <div class="faint small mono id">{{ d.serial or '' }}</div>
             </td>
             <td>
-              {% if d.registration %}
+              {% if not d.usable %}
+                <span class="chip warn">{{ ui.icon('alert', 12) }}
+                  {{ t('disks.reason.' ~ (d.reason or 'no_filesystem')) }}</span>
+              {% elif d.registration %}
                 <span class="chip {{ 'accent' if d.registration.role == 'master' else 'outline' }}">
                   {{ ui.icon('check', 12) }} {{ d.registration.display_name }}
                 </span>
@@ -91,7 +101,7 @@
                 <form class="actions" method="post" action="/disks/register">
                   <input type="hidden" name="fs_uuid" value="{{ d.fs_uuid }}">
                   <input name="display_name" placeholder="{{ t('disks.display_name') }}"
-                         value="{{ d.label or d.name }}" size="12" required>
+                         value="{{ d.name }}" size="12" maxlength="63" required>
                   <input name="set_name" placeholder="{{ t('disks.set_name') }}"
                          value="{{ registered[0]['set_name'] if registered else 'fotoarchiv' }}"
                          size="10" required>

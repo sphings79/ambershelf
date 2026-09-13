@@ -434,9 +434,9 @@ def disks_page(request: Request):
     # A backup disk is one you can unplug. Everything else is hidden unless
     # asked for, and anything belonging to the running system is never
     # offered at all - the helper refuses those anyway.
-    usable = [v for v in volumes if not v["system"] and not v["ignored"]]
-    removable = [v for v in usable if v["removable"]]
-    connected = usable if show_all else removable
+    offered = [v for v in volumes if not v["system"] and not v["ignored"]]
+    removable = [v for v in offered if v["removable"]]
+    connected = offered if show_all else removable
     hidden = len(volumes) - len(connected)
 
     try:

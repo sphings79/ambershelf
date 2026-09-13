@@ -207,10 +207,26 @@ def list_block_devices() -> list[dict]:
             "model": (node.get("model") or (parent or {}).get("model") or "").strip(),
             "vendor": (node.get("vendor") or (parent or {}).get("vendor") or "").strip(),
         }
-        if entry["type"] == "part" and entry["fs_type"]:
-            entry["system"] = is_system_partition(entry)
+        children = node.get("children") or []
+        entry["system"] = is_system_partition(entry)
+
+        if entry["fs_type"] and entry["type"] in ("part", "disk", "loop"):
+            # A filesystem, whether on a partition or straight on the disk -
+            # external drives are often formatted without a partition table.
+            entry["usable"] = (entry["fs_type"] or "").lower() in FS_OPTIONS \
+                and not entry["system"]
+            if not entry["usable"] and not entry["system"]:
+                entry["reason"] = "unsupported_filesystem"
             result.append(entry)
-        for child in node.get("children") or []:
+        elif entry["type"] == "part" or (entry["type"] in ("disk", "loop")
+                                         and not children):
+            # Nothing readable here. Reported rather than dropped: a disk that
+            # simply vanishes from the list leaves the user guessing why.
+            entry["usable"] = False
+            entry["reason"] = "no_filesystem"
+            result.append(entry)
+
+        for child in children:
             walk(child, entry)
 
     for node in json.loads(raw).get("blockdevices", []):
@@ -575,6 +591,10 @@ def handle_register(request: dict) -> dict:
     detected = next((e for e in device if (e["fs_uuid"] or "").upper() == fs_uuid.upper()), None)
     if detected is None:
         raise RuntimeError("this disk is not connected, so it cannot be registered")
+    if not detected.get("fs_type"):
+        raise RuntimeError(
+            f"{detected['path']} has no filesystem - format it first, "
+            "exFAT if the disk also has to work on macOS and Windows")
     if (detected["fs_type"] or "").lower() not in FS_OPTIONS:
         raise RuntimeError(f"filesystem {detected['fs_type']!r} is not supported")
     if detected.get("system"):
@@ -789,6 +809,8 @@ def admin(argv: list[str]) -> None:
                 marks.append("system")
             if entry.get("removable"):
                 marks.append("removable")
+            if entry.get("reason"):
+                marks.append(entry["reason"])
             print(f"{entry['path']:<14} {entry['fs_type'] or '-':<6} "
                   f"{(entry['fs_uuid'] or '-'):<38} {(entry['label'] or '-'):<20} "
                   f"{int(entry['size']) / 1024**3:8.1f} GB  "
