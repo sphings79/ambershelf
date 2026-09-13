@@ -475,6 +475,7 @@ def disks_page(request: Request):
                   demoting=db.disk_by_uuid(
                       (request.query_params.get("demote") or "").strip()),
                   password_set=auth.password_is_set(),
+                  can_demote=backend.can_demote(),
                   sets_in_use=sorted({row["set_name"] for row in registered}),
                   indexed={row["id"]: scanner.scan_state(row["id"])["files"]
                            for row in registered},
@@ -548,6 +549,8 @@ async def demote_master(request: Request):
     password = str(form.get("password") or "")
     understood = form.get("understood") == "1"
 
+    if not backend.can_demote():
+        return flash(request, "/disks", "demote.switched_off", "error")
     disk = db.disk_by_uuid(fs_uuid)
     if disk is None:
         return flash(request, "/disks", "forget.unknown", "error")

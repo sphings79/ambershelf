@@ -68,11 +68,16 @@ Done. Next:
   docker compose up -d
 
 Registered disks live in /etc/ambershelf/disks.conf. The container may add
-entries but can never change a role or delete one - that is deliberate. To
-change a role:
+entries but can never rewrite a role - that is deliberate. To change one:
 
   sudo ambershelf-helper --admin list
   sudo ambershelf-helper --admin set-role <fs-uuid> slave
+
+Giving a master up so the disk can be a copy is possible from the interface,
+behind a warning, the disk name and the password. To take that away and keep
+it here on the host only, put this in /etc/ambershelf/disks.conf:
+
+  "allow_demote": false
 
 To see what is connected right now:
 

@@ -115,6 +115,12 @@ class LinuxBackend:
     def unregister(self, fs_uuid: str) -> dict:
         return call("unregister", fs_uuid=fs_uuid)
 
+    def can_demote(self) -> bool:
+        try:
+            return call("ping").get("allow_demote", True) is not False
+        except BackendError:
+            return False
+
     def demote_master(self, fs_uuid: str) -> dict:
         return call("demote", fs_uuid=fs_uuid)
 

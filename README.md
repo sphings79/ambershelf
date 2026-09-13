@@ -141,7 +141,9 @@ type the disk name, give the password. The registration is **removed** rather th
 rewritten - registering the disk as a copy afterwards is a second, separate step - and
 giving a master up is refused while the set is mounted. The price is worth stating plainly:
 this runs over the same socket as everything else, so whoever owns the container *and* gets
-hold of the password can reach it too.
+hold of the password can reach it too. If that is too much, `"allow_demote": false` in
+`/etc/ambershelf/disks.conf` switches it off entirely, leaving `ambershelf-helper --admin`
+on the host as the only way.
 
 ## Three ways to run it
 

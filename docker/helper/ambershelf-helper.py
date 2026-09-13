@@ -42,6 +42,10 @@ rewrites one. A demoted disk is unregistered and unknown afterwards, so
 turning it into a writable copy takes a second, separate, deliberate
 registration. And it refuses while the set is mounted, so it can never change
 the role of a disk that is mounted read-only right now.
+
+If that trade is not worth it on a particular machine, put
+``"allow_demote": false`` in the config file. The socket then refuses the
+command outright and the ``--admin`` commands below are the only way left.
 """
 from __future__ import annotations
 
@@ -202,6 +206,17 @@ def ignored_disks(config: dict) -> list[dict]:
 
 def is_ignored(config: dict, fs_uuid: str) -> bool:
     return any(entry["fs_uuid"] == fs_uuid for entry in ignored_disks(config))
+
+
+def demote_allowed(config: dict) -> bool:
+    """Whether the socket may take a disk off the retired list at all.
+
+    The one command that can end up with a former master registered as a copy
+    is also the one an owner might not want reachable from the container on a
+    particular machine. Setting ``"allow_demote": false`` in the config file
+    closes it; the host commands below keep working either way.
+    """
+    return config.get("allow_demote", True) is not False
 
 
 def retired_masters(config: dict) -> list[str]:
@@ -522,7 +537,8 @@ def handle(request: dict) -> dict:
     command = request.get("cmd")
 
     if command == "ping":
-        return {"ok": True, "version": 1}
+        return {"ok": True, "version": 1,
+                "allow_demote": demote_allowed(load_config())}
 
     if command == "list_disks":
         config = load_config()
@@ -728,6 +744,12 @@ def handle_demote(request: dict) -> dict:
     """
     fs_uuid = require_uuid(request.get("fs_uuid"))
     config = load_config()
+    if not demote_allowed(config):
+        raise RuntimeError(
+            "giving up a master is switched off on this host. It can be done "
+            "with 'ambershelf-helper --admin remove' followed by "
+            "'--admin forget', or by setting \"allow_demote\": true in "
+            f"{CONFIG_PATH}")
     disk = find_disk(config, fs_uuid)
 
     if disk is not None:

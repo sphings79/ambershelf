@@ -147,7 +147,9 @@ Plattennamen eintippen, Passwort eingeben. Die Registrierung wird dabei **entfer
 umgeschrieben — die Platte danach als Kopie anzulegen ist ein zweiter, eigener Schritt, und
 solange der Satz eingehängt ist, wird das Aufgeben verweigert. Der Preis ist ehrlich zu
 benennen: Der Vorgang läuft über denselben Socket wie alles andere, wer also den Container
-übernimmt *und* an das Passwort kommt, erreicht ihn auch.
+übernimmt *und* an das Passwort kommt, erreicht ihn auch. Wem das zu weit geht, der schaltet
+es mit `"allow_demote": false` in `/etc/ambershelf/disks.conf` ganz ab — dann bleibt nur
+`ambershelf-helper --admin` auf dem Host.
 
 ## Drei Wege
 

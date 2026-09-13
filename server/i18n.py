@@ -256,8 +256,15 @@ STRINGS: dict[str, dict[str, str]] = {
             "Vergessen löscht nur, was AmberShelf über die Platte weiß — "
             "Verzeichnis, Zuteilungen, Verlauf. Auf der Platte selbst wird nichts "
             "angefasst. Eine Platte, die einmal Master war, lässt sich danach nur "
-            "wieder als Master registrieren — es sei denn, du gibst den Master "
-            "ausdrücklich auf.",
+            "wieder als Master registrieren.",
+        "disks.demote_off":
+            "Hinzufügen und Vergessen kannst du hier. Eine bestehende Rolle "
+            "umschreiben nicht. Einen Master aufzugeben ist auf diesem Host "
+            "abgeschaltet — das geht nur am Rechner selbst: sudo ambershelf-helper "
+            "--admin remove <uuid>, danach --admin forget <uuid>. Wieder "
+            "einschalten mit \"allow_demote\": true in /etc/ambershelf/disks.conf.",
+        "demote.switched_off":
+            "Master aufgeben ist auf diesem Host abgeschaltet.",
         "demote.button": "Master aufgeben",
         "demote.help": "Diese Platte ist dann kein Master mehr",
         "demote.title": "{name} als Master aufgeben",
@@ -735,8 +742,14 @@ STRINGS: dict[str, dict[str, str]] = {
             "Forgetting removes only what AmberShelf knows about the disk - the "
             "index, the assignments, the history. Nothing on the disk itself is "
             "touched. A disk that has been a master can afterwards only be "
-            "registered as a master again - unless you give the master up "
-            "deliberately.",
+            "registered as a master again.",
+        "disks.demote_off":
+            "Adding and forgetting happen here. Rewriting the role of a registered "
+            "disk does not. Giving a master up is switched off on this host - it "
+            "can only be done at the machine itself: sudo ambershelf-helper --admin "
+            "remove <uuid>, then --admin forget <uuid>. Switch it back on with "
+            "\"allow_demote\": true in /etc/ambershelf/disks.conf.",
+        "demote.switched_off": "Giving a master up is switched off on this host.",
         "demote.button": "Give up master",
         "demote.help": "This disk stops being a master",
         "demote.title": "Give up {name} as a master",

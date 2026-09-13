@@ -206,7 +206,7 @@
     <span class="note-icon">{{ ui.icon('lock', 18) }}</span>
     <div>
       <strong>{{ t('disks.role_locked') }}</strong>
-      <p>{{ t('disks.role_locked_help') }}</p>
+      <p>{{ t('disks.role_locked_help') if can_demote else t('disks.demote_off') }}</p>
     </div>
   </div>
 
@@ -229,7 +229,7 @@
     </div>
   {% endif %}
 
-  {% if demoting %}
+  {% if demoting and can_demote %}
     <form method="post" action="/disks/demote" style="margin-bottom:14px">
       <input type="hidden" name="fs_uuid" value="{{ demoting.fs_uuid }}">
       <div class="note error">
@@ -320,7 +320,7 @@
                   <a class="button quiet" href="/disks">{{ t('common.cancel') }}</a>
                 </form>
               {% else %}
-                {% if d.role == 'master' %}
+                {% if d.role == 'master' and can_demote %}
                   <a class="button quiet" href="/disks?demote={{ d.fs_uuid }}"
                      title="{{ t('demote.help') }}">
                     {{ ui.icon('unlock', 14) }} {{ t('demote.button') }}</a>

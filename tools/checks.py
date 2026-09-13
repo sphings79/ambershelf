@@ -324,6 +324,19 @@ def demotion_is_the_only_way_out_of_a_master() -> None:
         except RuntimeError:
             pass
 
+        # The host owner may close this door entirely.
+        helper.save_config({"version": 1, "allow_demote": False,
+                            "retired_masters": [uuid], "disks": []})
+        if helper.handle({"cmd": "ping"}).get("allow_demote") is not False:
+            problems.append("the switch is not reported to the container")
+        try:
+            helper.handle_demote({"fs_uuid": uuid})
+            problems.append("demoting worked although the switch is off")
+        except RuntimeError:
+            pass
+        if uuid not in helper.retired_masters(helper.load_config()):
+            problems.append("the refused demotion still cleared the retirement")
+
     check("a master can be given up but never rewritten into a copy",
           not problems, "; ".join(problems))
 

@@ -117,6 +117,14 @@ class Backend(Protocol):
     def unregister(self, fs_uuid: str) -> dict:
         """Forget a disk. Never touches what is on it."""
 
+    def can_demote(self) -> bool:
+        """Whether giving up a master is reachable from here at all.
+
+        False when the owner of the host has switched it off, so the
+        interface can say that rather than offer a button that is refused.
+        """
+        return True
+
     def demote_master(self, fs_uuid: str) -> dict:
         """Give up a master, so the disk may be a copy again.
 

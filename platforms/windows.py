@@ -209,6 +209,9 @@ class WindowsBackend:
             raise BackendError("this disk is not registered")
         return {"ok": True}
 
+    def can_demote(self) -> bool:
+        return True
+
     def demote_master(self, fs_uuid: str) -> dict:
         """The same as forgetting it - nothing here remembers a retirement.
 
