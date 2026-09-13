@@ -174,6 +174,27 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Ordnerebene für die Aufteilung",
         "settings.language": "Sprache",
         "settings.saved": "Gespeichert.",
+        "format.help": "Diese Platte formatieren",
+        "format.do": "Jetzt löschen und formatieren",
+        "format.done": "Formatiert.",
+        "format.unsupported":
+            "Formatieren geht nur in der Docker-Fassung. Nimm dafür das Werkzeug "
+            "deines Systems.",
+        "format.not_understood": "Setz das Häkchen — bewusst.",
+        "format.device_wrong": "Gerätename stimmt nicht. Es wurde nichts angefasst.",
+        "format.warning.title": "{device} wird vollständig gelöscht",
+        "format.warning.body":
+            "Alles auf dieser Platte ist danach weg. Das lässt sich nicht "
+            "rückgängig machen, und AmberShelf hat davon keine Kopie.",
+        "format.contents": "Darauf liegen gerade {count} Einträge:",
+        "format.contents_unreadable": "Der Inhalt ließ sich nicht lesen.",
+        "format.contents_empty": "Auf der Platte ist kein lesbares Dateisystem.",
+        "format.filesystem": "Dateisystem",
+        "format.label": "Bezeichnung",
+        "format.exfat_hint": "Mac und Windows, lesen und schreiben",
+        "format.ntfs_hint": "robuster, Mac nur lesend",
+        "format.understood": "Mir ist klar, dass alle Daten auf dieser Platte verloren gehen.",
+        "format.type_device": "Zum Bestätigen {device} eintippen",
         "disks.reason.no_filesystem": "kein Dateisystem — erst formatieren",
         "disks.reason.unsupported_filesystem": "Dateisystem wird nicht unterstützt",
         "disks.unusable_note":
@@ -580,6 +601,27 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Folder level used for splitting",
         "settings.language": "Language",
         "settings.saved": "Saved.",
+        "format.help": "Format this disk",
+        "format.do": "Erase and format now",
+        "format.done": "Formatted.",
+        "format.unsupported":
+            "Formatting is only available in the Docker edition. Use your system's "
+            "own tool for it.",
+        "format.not_understood": "Tick the box - deliberately.",
+        "format.device_wrong": "The device name does not match. Nothing was touched.",
+        "format.warning.title": "{device} will be erased completely",
+        "format.warning.body":
+            "Everything on this disk is gone afterwards. It cannot be undone, and "
+            "AmberShelf has no copy of it.",
+        "format.contents": "It currently holds {count} entries:",
+        "format.contents_unreadable": "The contents could not be read.",
+        "format.contents_empty": "There is no readable filesystem on this disk.",
+        "format.filesystem": "Filesystem",
+        "format.label": "Label",
+        "format.exfat_hint": "macOS and Windows, read and write",
+        "format.ntfs_hint": "more robust, macOS read-only",
+        "format.understood": "I understand that all data on this disk will be lost.",
+        "format.type_device": "Type {device} to confirm",
         "disks.reason.no_filesystem": "no filesystem - format it first",
         "disks.reason.unsupported_filesystem": "filesystem is not supported",
         "disks.unusable_note":

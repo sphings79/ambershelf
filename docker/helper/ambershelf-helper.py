@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import grp
+import hashlib
 import json
 import os
 import re
@@ -42,6 +43,7 @@ import struct
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -75,6 +77,48 @@ SYSTEM_FILESYSTEMS = {"swap", "linux_raid_member", "lvm2_member", "crypto_luks",
 #: the root filesystem, /boot, /home. Registering one of those as a copy
 #: would have AmberShelf write into the machine it runs on.
 REMOVABLE_MOUNT_ROOTS = ("/mnt", "/media", "/run/media")
+
+
+#: Filesystems the helper can create, and how. Quick formats only - a full
+#: surface write on a four terabyte disk is hours for no benefit here.
+MKFS = {
+    "exfat": ["/usr/sbin/mkfs.exfat", "-L", "{label}", "{device}"],
+    "ntfs": ["/usr/sbin/mkfs.ntfs", "--quick", "--label", "{label}", "{device}"],
+}
+
+#: Microsoft basic data - what macOS and Windows create for exFAT and NTFS,
+#: and what they both recognise without argument.
+PARTITION_TYPE = "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"
+
+SFDISK = "/usr/sbin/sfdisk"
+WIPEFS = "/usr/sbin/wipefs"
+PARTPROBE = "/usr/sbin/partprobe"
+
+
+def device_token(entry: dict) -> str:
+    """A stable handle for a device that the container may pass back.
+
+    The container is never allowed to name a device - that is what keeps a
+    compromised one from mounting or erasing whatever it likes. A blank disk
+    has no filesystem UUID to refer to, so the helper hands out a token
+    derived from what the hardware reports and resolves it again itself.
+    """
+    material = "|".join(str(entry.get(key) or "") for key in
+                        ("path", "serial", "size", "model", "vendor", "fs_uuid"))
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
+
+
+def device_for_token(token: str) -> dict:
+    """Resolve a token back to exactly one device, or refuse."""
+    if not isinstance(token, str) or not re.fullmatch(r"[0-9a-f]{16}", token):
+        raise RuntimeError("invalid disk token")
+    matches = [entry for entry in list_block_devices()
+               if device_token(entry) == token]
+    if not matches:
+        raise RuntimeError("this disk is not connected any more")
+    if len(matches) > 1:
+        raise RuntimeError("this token matches more than one disk - refusing")
+    return matches[0]
 
 
 def is_system_partition(entry: dict) -> bool:
@@ -206,9 +250,12 @@ def list_block_devices() -> list[dict]:
                               or (parent or {}).get("removable")),
             "model": (node.get("model") or (parent or {}).get("model") or "").strip(),
             "vendor": (node.get("vendor") or (parent or {}).get("vendor") or "").strip(),
+            "parent_path": (parent or {}).get("path"),
         }
         children = node.get("children") or []
         entry["system"] = is_system_partition(entry)
+
+        entry["token"] = device_token(entry)
 
         if entry["fs_type"] and entry["type"] in ("part", "disk", "loop"):
             # A filesystem, whether on a partition or straight on the disk -
@@ -489,6 +536,12 @@ def handle(request: dict) -> dict:
     if command == "unignore":
         return handle_unignore(request)
 
+    if command == "peek":
+        return handle_peek(request)
+
+    if command == "format":
+        return handle_format(request)
+
     if command == "list_ignored":
         return {"ok": True, "ignored": ignored_disks(load_config())}
 
@@ -683,6 +736,138 @@ def handle_unignore(request: dict) -> dict:
     save_config(config)
     log(f"no longer excluded: {fs_uuid}")
     return {"ok": True}
+
+
+def refuse_unless_free(entry: dict, config: dict) -> None:
+    """Every reason a disk must be left alone, checked in one place."""
+    if entry.get("system"):
+        raise RuntimeError(
+            f"{entry['path']} belongs to the running system"
+            + (f" (mounted at {entry['mountpoint']})" if entry.get("mountpoint") else ""))
+    if entry.get("mountpoint"):
+        raise RuntimeError(f"{entry['path']} is mounted at {entry['mountpoint']}")
+
+    uuid = entry.get("fs_uuid") or ""
+    if uuid and find_disk(config, uuid) is not None:
+        raise RuntimeError(
+            f"{entry['path']} is registered - forget it first")
+    if uuid and is_ignored(config, uuid):
+        raise RuntimeError(f"{entry['path']} is on the excluded list")
+
+    # A partition of a disk that carries something registered counts too.
+    parent = entry.get("parent_path")
+    for other in list_block_devices():
+        if other["path"] == entry["path"]:
+            continue
+        related = (other.get("parent_path") == entry["path"]
+                   or other["path"] == parent)
+        if not related:
+            continue
+        if other.get("mountpoint"):
+            raise RuntimeError(
+                f"{other['path']} on the same disk is mounted at {other['mountpoint']}")
+        other_uuid = other.get("fs_uuid") or ""
+        if other_uuid and find_disk(config, other_uuid) is not None:
+            raise RuntimeError(f"{other['path']} on the same disk is registered")
+        if other_uuid and is_ignored(config, other_uuid):
+            raise RuntimeError(f"{other['path']} on the same disk is excluded")
+
+
+def handle_peek(request: dict) -> dict:
+    """Mount a disk read-only for a moment and say what is on it.
+
+    The most honest warning before erasing something is its own contents.
+    Read-only, so looking cannot break anything.
+    """
+    entry = device_for_token(request.get("token"))
+    if not entry.get("fs_type"):
+        return {"ok": True, "readable": False, "entries": [], "count": 0}
+    if (entry["fs_type"] or "").lower() not in FS_OPTIONS:
+        return {"ok": True, "readable": False, "entries": [], "count": 0}
+    if entry.get("mountpoint"):
+        root = Path(entry["mountpoint"])
+        return {"ok": True, **describe_contents(root)}
+
+    temporary = Path("/run/ambershelf/peek")
+    temporary.mkdir(parents=True, exist_ok=True)
+    try:
+        run_mount(Path(entry["path"]), temporary, entry["fs_type"], read_only=True)
+    except RuntimeError as exc:
+        return {"ok": True, "readable": False, "entries": [], "count": 0,
+                "error": str(exc)}
+    try:
+        return {"ok": True, **describe_contents(temporary)}
+    finally:
+        run_umount(temporary)
+
+
+def describe_contents(root: Path) -> dict:
+    try:
+        names = sorted(child.name for child in root.iterdir()
+                       if not child.name.startswith("."))
+    except OSError as exc:
+        return {"readable": False, "entries": [], "count": 0, "error": str(exc)}
+    return {"readable": True, "entries": names[:12], "count": len(names)}
+
+
+def handle_format(request: dict) -> dict:
+    """Erase a disk and put a fresh filesystem on it.
+
+    The most destructive thing this program can do, so every guard is here
+    and the caller has had to confirm twice before reaching it.
+    """
+    entry = device_for_token(request.get("token"))
+    config = load_config()
+    refuse_unless_free(entry, config)
+
+    filesystem = str(request.get("filesystem") or "exfat").lower()
+    if filesystem not in MKFS:
+        raise RuntimeError(f"cannot create {filesystem!r}")
+    label = require_name(request.get("label") or "AmberShelf", "the label")[:15]
+
+    whole_disk = entry["type"] in ("disk", "loop")
+    device = entry["path"]
+    log(f"formatting {device} as {filesystem}, label {label!r}")
+
+    if whole_disk:
+        # A partition table, because that is what macOS and Windows create
+        # and what they read back without complaint.
+        step(["wipefs", "--all", device], WIPEFS)
+        step(["sfdisk", "--label", "gpt", device], SFDISK,
+             stdin=f'type={PARTITION_TYPE}\n')
+        step(["partprobe", device], PARTPROBE, check=False)
+        subprocess.run(["udevadm", "settle"], capture_output=True, timeout=30)
+        target = f"{device}p1" if device[-1].isdigit() else f"{device}1"
+        for _ in range(20):
+            if Path(target).exists():
+                break
+            time.sleep(0.25)
+        if not Path(target).exists():
+            raise RuntimeError(f"the new partition {target} did not appear")
+    else:
+        target = device
+        step(["wipefs", "--all", device], WIPEFS)
+
+    command = [part.format(label=label, device=target) for part in MKFS[filesystem]]
+    step(command, command[0])
+    subprocess.run(["udevadm", "settle"], capture_output=True, timeout=30)
+
+    fresh = next((e for e in list_block_devices() if e["path"] == target), None)
+    log(f"formatted {target}: {(fresh or {}).get('fs_uuid')}")
+    return {"ok": True, "device": target,
+            "fs_uuid": (fresh or {}).get("fs_uuid"), "label": label}
+
+
+def step(command: list[str], binary: str, stdin: str | None = None,
+         check: bool = True) -> None:
+    command = [binary, *command[1:]]
+    if not Path(binary).exists():
+        raise RuntimeError(f"{binary} is not installed on this host")
+    result = subprocess.run(command, capture_output=True, timeout=900,
+                            input=(stdin or "").encode() if stdin else None)
+    if check and result.returncode != 0:
+        detail = (result.stderr or b"").decode("utf-8", "replace").strip()
+        raise RuntimeError(f"{Path(binary).name} failed: {detail[:300]}")
 
 
 class Handler(socketserver.StreamRequestHandler):

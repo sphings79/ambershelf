@@ -160,6 +160,17 @@ class MacBackend:
     def ignored_disks(self) -> list[dict]:
         return self.registry.ignored()
 
+    def peek(self, token: str) -> dict:
+        return {"ok": True, "readable": False, "entries": [], "count": 0}
+
+    def can_format(self) -> bool:
+        # Disk Utility already does this, knows the conventions of this
+        # system, and is the thing a user of it expects to be told about.
+        return False
+
+    def format(self, token: str, filesystem: str, label: str) -> dict:
+        raise BackendError("format the disk with Disk Utility")
+
     # -------------------------------------------------------------- mounts --
 
     def attach(self, set_name: str) -> MountReport:

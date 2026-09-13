@@ -116,6 +116,10 @@
               {% endif %}
             </td>
             <td class="right">
+              {% if can_format and not d.registration and formatting != d.token %}
+                <a class="button quiet" href="/disks?format={{ d.token }}"
+                   title="{{ t('format.help') }}">{{ ui.icon('alert', 14) }}</a>
+              {% endif %}
               {% if not d.registration and d.fs_uuid %}
                 <form class="inline" method="post" action="/disks/ignore">
                   <input type="hidden" name="fs_uuid" value="{{ d.fs_uuid }}">
@@ -125,6 +129,66 @@
               {% endif %}
             </td>
           </tr>
+          {% if formatting == d.token %}
+          <tr class="format-row">
+            <td colspan="6">
+              <form class="format-confirm" method="post" action="/disks/format">
+                <input type="hidden" name="token" value="{{ d.token }}">
+                <input type="hidden" name="device" value="{{ d.path }}">
+
+                <div class="note error" style="margin:0 0 10px">
+                  <span class="note-icon">{{ ui.icon('alert', 18) }}</span>
+                  <div>
+                    <strong>{{ t('format.warning.title', device=d.path) }}</strong>
+                    <p>{{ t('format.warning.body') }}</p>
+                    {% if contents and contents.readable %}
+                      <p class="small">
+                        <strong>{{ t('format.contents', count=contents.count) }}</strong><br>
+                        <span class="mono">{{ contents.entries|join(' · ') }}{% if contents.count > contents.entries|length %} …{% endif %}</span>
+                      </p>
+                    {% elif d.fs_type %}
+                      <p class="small">{{ t('format.contents_unreadable') }}</p>
+                    {% else %}
+                      <p class="small">{{ t('format.contents_empty') }}</p>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="actions" style="margin-bottom:8px">
+                  <label class="field" style="flex:0 0 auto">
+                    <span>{{ t('format.filesystem') }}</span>
+                    <select name="filesystem">
+                      <option value="exfat">exFAT — {{ t('format.exfat_hint') }}</option>
+                      <option value="ntfs">NTFS — {{ t('format.ntfs_hint') }}</option>
+                    </select>
+                  </label>
+                  <label class="field" style="flex:0 0 auto">
+                    <span>{{ t('format.label') }}</span>
+                    <input name="label" value="{{ d.label or 'AmberShelf' }}"
+                           maxlength="15" size="12">
+                  </label>
+                </div>
+
+                <label class="check" style="margin-bottom:8px">
+                  <input type="checkbox" name="understood" value="1" required>
+                  {{ t('format.understood') }}
+                </label>
+
+                <div class="actions">
+                  <label class="field" style="flex:0 0 auto">
+                    <span>{{ t('format.type_device', device=d.path) }}</span>
+                    <input name="confirm" autocomplete="off" required
+                           placeholder="{{ d.path }}" size="14">
+                  </label>
+                  <button class="danger" style="align-self:flex-end">
+                    {{ ui.icon('alert', 15) }} {{ t('format.do') }}</button>
+                  <a class="button quiet" href="/disks"
+                     style="align-self:flex-end">{{ t('common.cancel') }}</a>
+                </div>
+              </form>
+            </td>
+          </tr>
+          {% endif %}
         {% endfor %}
         </tbody>
       </table>

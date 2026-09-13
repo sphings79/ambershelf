@@ -443,10 +443,22 @@ def disks_page(request: Request):
         excluded = backend.ignored_disks()
     except BackendError:
         excluded = []
+
+    # Looking inside the disk about to be erased is a better warning than any
+    # wording, so it is fetched only for the one being confirmed.
+    formatting = request.query_params.get("format")
+    contents = None
+    if formatting and backend.can_format():
+        try:
+            contents = backend.peek(formatting)
+        except BackendError as exc:
+            contents = {"readable": False, "entries": [], "count": 0, "error": str(exc)}
     registered = db.query("SELECT * FROM disks ORDER BY set_name, role DESC")
     return render("disks.html", request, connected=connected, error=error,
                   registered=registered,
                   show_all=show_all, hidden=hidden, excluded=excluded,
+                  formatting=formatting, contents=contents,
+                  can_format=backend.can_format(),
                   system_count=sum(1 for v in volumes if v["system"]),
                   ignored_count=sum(1 for v in volumes if v["ignored"]),
                   removing=request.query_params.get("remove"),
@@ -527,6 +539,40 @@ def unignore_disk(request: Request, fs_uuid: str = Form(...)):
         return flash(request, "/disks", str(exc), "error")
     db.log_event("info", f"{fs_uuid} no longer excluded", None, "disks")
     return flash(request, "/disks", "exclude.undone", "ok")
+
+
+@app.post("/disks/format")
+async def format_disk(request: Request):
+    """Erase a disk. The most destructive thing here, gated accordingly."""
+    form = await request.form()
+    token = str(form.get("token") or "")
+    device = str(form.get("device") or "")
+    confirm = str(form.get("confirm") or "").strip()
+    understood = form.get("understood") == "1"
+    filesystem = str(form.get("filesystem") or "exfat")
+    label = str(form.get("label") or "AmberShelf").strip()
+
+    if not backend.can_format():
+        return flash(request, "/disks", "format.unsupported", "error")
+    if manager.busy_with() is not None:
+        return flash(request, "/disks", "forget.busy", "error")
+
+    back_to = f"/disks?format={quote(token)}"
+    if not understood:
+        return flash(request, back_to, "format.not_understood", "error")
+    if confirm != device:
+        return flash(request, back_to, "format.device_wrong", "error")
+
+    try:
+        result = backend.format(token, filesystem, label)
+    except BackendError as exc:
+        db.log_event("error", f"format refused: {exc}", None, "disks")
+        return flash(request, "/disks", str(exc), "error")
+
+    db.log_event("warning",
+                 f"{device} was erased and formatted as {filesystem} "
+                 f"({result.get('device')}, {result.get('fs_uuid')})", None, "disks")
+    return flash(request, "/disks", "format.done", "ok")
 
 
 @app.post("/disks/register")

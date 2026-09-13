@@ -365,6 +365,11 @@ button:disabled, .button:disabled { opacity: .45; cursor: not-allowed; }
 button.icon-only { padding: 7px; }
 
 form.inline { display: inline-flex; }
+/* The erase panel gets a row of its own under the disk it is about to
+   destroy - squeezed into the last column it was unreadable, which is the
+   opposite of what a warning is for. */
+tr.format-row td { background: var(--surface-2); padding: 16px 14px; }
+.format-confirm { display: block; max-width: 760px; }
 
 /* Which answer a case currently carries. */
 button.on-approve { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }

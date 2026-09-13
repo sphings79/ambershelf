@@ -37,6 +37,9 @@ class Volume:
     usable: bool = True
     #: Why not, as a key the interface can translate.
     reason: str | None = None
+    #: Opaque handle the interface may hand back. The container never names a
+    #: device; the platform resolves this itself.
+    token: str | None = None
     model: str | None = None
     registration: dict | None = None
 
@@ -54,7 +57,7 @@ class Volume:
     def as_dict(self) -> dict:
         return {
             "id": self.id, "path": self.id, "name": self.suggested_name(),
-            "usable": self.usable, "reason": self.reason,
+            "usable": self.usable, "reason": self.reason, "token": self.token,
             "fs_uuid": self.fs_uuid, "serial": self.serial, "label": self.label,
             "fs_type": self.fs_type, "size": self.size, "mountpoint": self.mountpoint,
             "removable": self.removable, "read_only": self.read_only,
@@ -116,6 +119,16 @@ class Backend(Protocol):
     def unignore(self, fs_uuid: str) -> dict: ...
 
     def ignored_disks(self) -> list[dict]: ...
+
+    def peek(self, token: str) -> dict:
+        """Look at what is on a disk without changing anything."""
+
+    def can_format(self) -> bool:
+        """Whether this platform can create a filesystem itself."""
+        return False
+
+    def format(self, token: str, filesystem: str, label: str) -> dict:
+        """Erase a disk and put a fresh filesystem on it."""
 
     def attach(self, set_name: str) -> MountReport: ...
 

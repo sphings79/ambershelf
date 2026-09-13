@@ -97,6 +97,7 @@ class LinuxBackend:
                 ignored=bool(entry.get("ignored")),
                 usable=bool(entry.get("usable", True)),
                 reason=entry.get("reason"),
+                token=entry.get("token"),
                 model=entry.get("model"),
                 registration=entry.get("registration"),
             ))
@@ -121,6 +122,15 @@ class LinuxBackend:
 
     def ignored_disks(self) -> list[dict]:
         return call("list_ignored")["ignored"]
+
+    def peek(self, token: str) -> dict:
+        return call("peek", token=token)
+
+    def can_format(self) -> bool:
+        return True
+
+    def format(self, token: str, filesystem: str, label: str) -> dict:
+        return call("format", token=token, filesystem=filesystem, label=label)
 
     def attach(self, set_name: str) -> MountReport:
         result = call("mount_set", set_name=set_name)
