@@ -6,22 +6,58 @@
 <div class="page-head">
   <div>
     <h1>{{ t('assign.title') }}</h1>
-    <div class="sub">
-      {{ t('assign.split_on') if state.split_enabled else t('assign.split_off') }}
+    <div class="sub">{{ t('assign.sub') }}</div>
+  </div>
+  {% if state.split_enabled %}
+    <div class="actions">
+      <form class="inline" method="post" action="/sets/{{ set_name }}/assign/rebuild">
+        <button class="quiet">{{ ui.icon('refresh', 15) }} {{ t('assign.rebuild') }}</button>
+      </form>
     </div>
-  </div>
-  <div class="actions">
-    <form class="inline" method="post" action="/sets/{{ set_name }}/assign/rebuild">
-      <button class="quiet">{{ ui.icon('refresh', 15) }} {{ t('assign.rebuild') }}</button>
-    </form>
-    <form class="inline" method="post" action="/sets/{{ set_name }}/assign/split">
-      <input type="hidden" name="enabled" value="{{ '0' if state.split_enabled else '1' }}">
-      <button>{{ ui.icon('split', 15) }}
-        {{ t('assign.disable') if state.split_enabled else t('assign.enable') }}</button>
-    </form>
-  </div>
+  {% endif %}
 </div>
 
+<section class="card">
+  <div class="card-head"><h2>{{ t('mode.title') }}</h2></div>
+  <div class="modes">
+    <form method="post" action="/sets/{{ set_name }}/assign/split" class="mode {{ 'on' if not state.split_enabled }}">
+      <input type="hidden" name="enabled" value="0">
+      <div class="mode-head">
+        {{ ui.icon('copy', 18) }}
+        <strong>{{ t('mode.mirror') }}</strong>
+        {% if not state.split_enabled %}
+          <span class="chip ok">{{ ui.icon('check', 12) }} {{ t('mode.active') }}</span>
+        {% endif %}
+      </div>
+      <p class="small muted">{{ t('mode.mirror.body') }}</p>
+      <p class="mono small faint">{{ t('mode.mirror.example') }}</p>
+      {% if state.split_enabled %}
+        <button>{{ t('mode.choose') }}</button>
+      {% endif %}
+    </form>
+
+    <form method="post" action="/sets/{{ set_name }}/assign/split" class="mode {{ 'on' if state.split_enabled }}">
+      <input type="hidden" name="enabled" value="1">
+      <div class="mode-head">
+        {{ ui.icon('split', 18) }}
+        <strong>{{ t('mode.pool') }}</strong>
+        {% if state.split_enabled %}
+          <span class="chip ok">{{ ui.icon('check', 12) }} {{ t('mode.active') }}</span>
+        {% endif %}
+      </div>
+      <p class="small muted">{{ t('mode.pool.body') }}</p>
+      <p class="mono small faint">{{ t('mode.pool.example') }}</p>
+      {% if not state.split_enabled %}
+        <button>{{ t('mode.choose') }}</button>
+      {% endif %}
+    </form>
+  </div>
+  {% if not state.split_enabled %}
+    <p class="muted small" style="margin-bottom:0">{{ t('mode.mirror.note') }}</p>
+  {% endif %}
+</section>
+
+{% if state.split_enabled %}
 {% if not state.nodes %}
   <div class="card"><p class="muted" style="margin:0">{{ t('assign.no_tree') }}</p></div>
 {% else %}
@@ -137,5 +173,6 @@
     </div>
   </section>
 </form>
+{% endif %}
 {% endif %}
 {% endblock %}

@@ -297,6 +297,7 @@ body.centred { display: grid; place-items: center; padding: 24px; }
 .chip.danger { background: var(--danger-soft); color: var(--danger); }
 .chip.accent { background: var(--accent-soft); color: var(--accent); }
 .chip.outline { background: transparent; border-color: var(--border); }
+a.chip:hover { border-color: var(--border-strong); color: var(--text); text-decoration: none; }
 
 .disk-stats {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
@@ -496,6 +497,19 @@ tr.row-uncovered td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
 .tile.changed .count, .tile.unreadable .count, .tile.deleted .count { color: var(--danger); }
 .tile.renamed .count { color: var(--warn); }
 .tile.empty .count { color: var(--text-faint); }
+
+/* The two sync modes sit side by side; the active one is outlined so the
+   answer to "what does this set do?" is visible without reading. */
+.modes { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+.mode {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 13px 15px; display: flex; flex-direction: column; gap: 5px;
+}
+.mode.on { border-color: var(--accent); background: var(--accent-soft); }
+.mode-head { display: flex; align-items: center; gap: 8px; }
+.mode-head svg { flex: 0 0 auto; color: var(--accent); }
+.mode p { margin: 0; }
+.mode button { align-self: flex-start; margin-top: 7px; }
 
 .slave-block { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
 .slave-block:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }

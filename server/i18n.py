@@ -12,7 +12,7 @@ STRINGS: dict[str, dict[str, str]] = {
 
         "nav.overview": "Übersicht",
         "nav.disks": "Platten",
-        "nav.assign": "Aufteilung",
+        "nav.assign": "Sync-Art",
         "nav.plan": "Vorschau",
         "nav.events": "Verlauf",
         "nav.settings": "Einstellungen",
@@ -88,11 +88,26 @@ STRINGS: dict[str, dict[str, str]] = {
             "Der Master wird immer nur lesend eingehängt. Prüfe die Rolle, bevor "
             "du registrierst — ändern lässt sie sich danach nur noch am Host.",
 
-        "assign.title": "Aufteilung",
-        "assign.split_off": "Alle Kopien tragen den vollständigen Bestand.",
-        "assign.split_on": "Der Bestand ist auf die Kopien verteilt.",
-        "assign.enable": "Aufteilen einschalten",
-        "assign.disable": "Aufteilen ausschalten",
+        "assign.title": "Sync-Art",
+        "assign.sub": "Legt fest, was auf den Kopien landet.",
+        "mode.title": "Wie soll gesynct werden?",
+        "mode.active": "aktiv",
+        "mode.choose": "Diese Art verwenden",
+        "mode.mirror": "Jede Kopie trägt alles",
+        "mode.mirror.body":
+            "Jede Kopie bekommt den kompletten Bestand des Masters. "
+            "Zwei Kopien heißt zweimal derselbe Inhalt \u2013 also zweimal Sicherheit. "
+            "Jede einzelne Kopie muss dafür so groß sein wie der belegte Platz auf dem Master.",
+        "mode.mirror.example": "Beispiel: Master 4 TB mit 1,5 TB Daten \u2192 jede Kopie braucht 1,5 TB.",
+        "mode.mirror.note":
+            "In dieser Sync-Art gibt es nichts einzustellen: Jede Kopie bekommt jeden Ordner.",
+        "mode.pool": "Kopien teilen sich den Bestand",
+        "mode.pool.body":
+            "Mehrere kleinere Platten ergeben zusammen ein Ziel. Jeder Ordner des Masters "
+            "geht auf genau eine Kopie, zusammen decken sie alles ab. Das spart Platz, "
+            "aber jeder Ordner liegt nur einmal \u2013 f\u00e4llt eine Kopie aus, fehlt ihr Teil.",
+        "mode.pool.example":
+            "Beispiel: Master 4 TB, Kopien 2 TB + 2 TB \u2192 zusammen ein Ziel f\u00fcr 4 TB.",
         "assign.depth": "Ordnerebene",
         "assign.rebuild": "Ordnerbaum neu berechnen",
         "assign.suggest": "Vorschlag berechnen",
@@ -447,7 +462,7 @@ STRINGS: dict[str, dict[str, str]] = {
 
         "nav.overview": "Overview",
         "nav.disks": "Disks",
-        "nav.assign": "Split",
+        "nav.assign": "Sync mode",
         "nav.plan": "Preview",
         "nav.events": "History",
         "nav.settings": "Settings",
@@ -523,11 +538,25 @@ STRINGS: dict[str, dict[str, str]] = {
             "A master is always mounted read-only. Check the role before registering - "
             "afterwards it can only be changed on the host.",
 
-        "assign.title": "Split",
-        "assign.split_off": "Every copy carries the full archive.",
-        "assign.split_on": "The archive is split across the copies.",
-        "assign.enable": "Turn splitting on",
-        "assign.disable": "Turn splitting off",
+        "assign.title": "Sync mode",
+        "assign.sub": "Decides what ends up on the copies.",
+        "mode.title": "How should this set be synced?",
+        "mode.active": "active",
+        "mode.choose": "Use this mode",
+        "mode.mirror": "Every copy carries everything",
+        "mode.mirror.body":
+            "Each copy receives the master's complete archive. Two copies mean the same "
+            "content twice \u2013 two chances to survive a failure. In return, every single "
+            "copy has to be as large as the used space on the master.",
+        "mode.mirror.example": "Example: a 4 TB master holding 1.5 TB \u2192 every copy needs 1.5 TB.",
+        "mode.mirror.note": "There is nothing to configure in this mode: every copy gets every folder.",
+        "mode.pool": "Copies share the archive",
+        "mode.pool.body":
+            "Several smaller disks act as one target. Every folder of the master goes to "
+            "exactly one copy, and together they cover all of it. That saves space, but each "
+            "folder exists only once \u2013 lose a copy and you lose its share.",
+        "mode.pool.example":
+            "Example: a 4 TB master with 2 TB + 2 TB copies \u2192 one 4 TB target.",
         "assign.depth": "Folder level",
         "assign.rebuild": "Rebuild the folder tree",
         "assign.suggest": "Calculate a proposal",

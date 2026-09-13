@@ -31,9 +31,10 @@
     {% if s.any_mounted %}
       <span class="chip accent">{{ ui.icon('mount', 12) }} {{ t('overview.mounted') }}</span>
     {% endif %}
-    {% if s.split_enabled %}
-      <span class="chip outline">{{ ui.icon('split', 12) }} {{ t('assign.title') }}</span>
-    {% endif %}
+    <a class="chip outline" href="/sets/{{ s.name }}/assign">
+      {{ ui.icon('split', 12) }}
+      {{ t('mode.pool') if s.split_enabled else t('mode.mirror') }}
+    </a>
 
     <div class="actions">
       {% if s.any_mounted %}
