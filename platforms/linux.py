@@ -94,6 +94,7 @@ class LinuxBackend:
                 mountpoint=entry.get("mountpoint"),
                 removable=bool(entry.get("removable")),
                 system=bool(entry.get("system")),
+                ignored=bool(entry.get("ignored")),
                 model=entry.get("model"),
                 registration=entry.get("registration"),
             ))
@@ -109,6 +110,15 @@ class LinuxBackend:
 
     def unregister(self, fs_uuid: str) -> dict:
         return call("unregister", fs_uuid=fs_uuid)
+
+    def ignore(self, fs_uuid: str) -> dict:
+        return call("ignore", fs_uuid=fs_uuid)
+
+    def unignore(self, fs_uuid: str) -> dict:
+        return call("unignore", fs_uuid=fs_uuid)
+
+    def ignored_disks(self) -> list[dict]:
+        return call("list_ignored")["ignored"]
 
     def attach(self, set_name: str) -> MountReport:
         result = call("mount_set", set_name=set_name)

@@ -18,6 +18,10 @@
       <span class="chip">{{ ui.icon('lock', 12) }}
         {{ t('disks.system_hidden', count=system_count) }}</span>
     {% endif %}
+    {% if ignored_count %}
+      <span class="chip">{{ ui.icon('exclude', 12) }}
+        {{ t('exclude.hidden', count=ignored_count) }}</span>
+    {% endif %}
     <div class="actions">
       {% if show_all %}
         <a class="button quiet" href="/disks">{{ t('disks.only_removable') }}</a>
@@ -57,6 +61,7 @@
             <th class="num">{{ t('common.size') }}</th>
             <th>{{ t('disks.uuid') }}</th>
             <th>{{ t('disks.register') }}</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -98,6 +103,15 @@
                 </form>
               {% else %}
                 <span class="faint">—</span>
+              {% endif %}
+            </td>
+            <td class="right">
+              {% if not d.registration and d.fs_uuid %}
+                <form class="inline" method="post" action="/disks/ignore">
+                  <input type="hidden" name="fs_uuid" value="{{ d.fs_uuid }}">
+                  <button class="quiet icon-only" title="{{ t('exclude.help') }}">
+                    {{ ui.icon('exclude', 14) }}</button>
+                </form>
               {% endif %}
             </td>
           </tr>
@@ -197,4 +211,44 @@
     </div>
   {% endif %}
 </section>
+
+{% if excluded %}
+<section class="card">
+  <div class="card-head">
+    <h2>{{ t('exclude.title') }}</h2>
+    <span class="chip outline">{{ excluded|length }}</span>
+  </div>
+  <p class="muted small" style="margin-top:-6px">{{ t('exclude.note') }}</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ t('disks.label') }}</th>
+          <th>{{ t('disks.fstype') }}</th>
+          <th class="num">{{ t('common.size') }}</th>
+          <th>{{ t('disks.uuid') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for e in excluded %}
+        <tr>
+          <td><strong>{{ e.label or '—' }}</strong></td>
+          <td class="small">{{ e.fs_type or '—' }}</td>
+          <td class="num">{{ e.size|bytes }}</td>
+          <td class="id-cell"><span class="mono id small">{{ e.fs_uuid }}</span></td>
+          <td class="right">
+            <form class="inline" method="post" action="/disks/unignore">
+              <input type="hidden" name="fs_uuid" value="{{ e.fs_uuid }}">
+              <button class="quiet">{{ ui.icon('refresh', 14) }} {{ t('exclude.undo') }}</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
 {% endblock %}

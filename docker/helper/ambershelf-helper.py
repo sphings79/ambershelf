@@ -131,6 +131,21 @@ def save_config(data: dict) -> None:
     os.replace(tmp, CONFIG_PATH)
 
 
+def ignored_disks(config: dict) -> list[dict]:
+    """Disks AmberShelf is to leave alone entirely.
+
+    Every machine has one: the disk that holds something else's backup, a
+    scratch drive, a disk somebody else uses. Keeping them off the list is
+    half the point; the other half is that the helper refuses to register or
+    mount them at all, so a mistake in the interface cannot reach them.
+    """
+    return config.setdefault("ignored", [])
+
+
+def is_ignored(config: dict, fs_uuid: str) -> bool:
+    return any(entry["fs_uuid"] == fs_uuid for entry in ignored_disks(config))
+
+
 def retired_masters(config: dict) -> list[str]:
     return config.setdefault("retired_masters", [])
 
@@ -343,6 +358,11 @@ def mount_set(set_name: str) -> dict:
 
     # Master first. If it cannot be mounted read-only, nothing else happens.
     for disk in masters + [d for d in members if d["role"] == "slave"]:
+        if is_ignored(config, disk["fs_uuid"]):
+            # Belt and braces: an excluded disk cannot be registered, so this
+            # should be unreachable - which is exactly when a check is worth
+            # having.
+            raise RuntimeError(f"{disk['display_name']} is on the excluded list")
         device = device_for_uuid(disk["fs_uuid"])
         if device is None:
             missing.append({"fs_uuid": disk["fs_uuid"], "display_name": disk["display_name"],
@@ -433,8 +453,10 @@ def handle(request: dict) -> dict:
         devices = []
         for entry in list_block_devices():
             registration = known.get(entry["fs_uuid"] or "")
-            devices.append({**entry, "registration": registration})
-        return {"ok": True, "disks": devices}
+            devices.append({**entry, "registration": registration,
+                            "ignored": is_ignored(config, entry["fs_uuid"] or "")})
+        return {"ok": True, "disks": devices,
+                "ignored": ignored_disks(config)}
 
     if command == "list_registrations":
         return {"ok": True, "disks": load_config()["disks"]}
@@ -444,6 +466,15 @@ def handle(request: dict) -> dict:
 
     if command == "unregister":
         return handle_unregister(request)
+
+    if command == "ignore":
+        return handle_ignore(request)
+
+    if command == "unignore":
+        return handle_unignore(request)
+
+    if command == "list_ignored":
+        return {"ok": True, "ignored": ignored_disks(load_config())}
 
     if command == "mount_set":
         set_name = require_name(request.get("set_name"), "set_name")
@@ -508,6 +539,9 @@ def handle_register(request: dict) -> dict:
     display_name = require_name(request.get("display_name"), "the disk name")
 
     config = load_config()
+    if is_ignored(config, fs_uuid):
+        raise RuntimeError(
+            "this disk is excluded - take it off the excluded list first")
     existing = find_disk(config, fs_uuid)
     if existing is not None:
         if existing["role"] != role or existing["set_name"] != set_name:
@@ -592,6 +626,45 @@ def handle_unregister(request: dict) -> dict:
     return {"ok": True, "disk": disk}
 
 
+def handle_ignore(request: dict) -> dict:
+    """Put a disk out of reach. Nothing on it is touched, ever."""
+    fs_uuid = require_uuid(request.get("fs_uuid"))
+    config = load_config()
+
+    if find_disk(config, fs_uuid) is not None:
+        raise RuntimeError(
+            "this disk is registered - forget it first, then exclude it")
+    if is_ignored(config, fs_uuid):
+        return {"ok": True, "already": True}
+
+    detected = next((e for e in list_block_devices()
+                     if (e["fs_uuid"] or "").upper() == fs_uuid.upper()), None)
+    entry = {
+        "fs_uuid": fs_uuid,
+        "label": (detected or {}).get("label"),
+        "serial": (detected or {}).get("serial"),
+        "size": (detected or {}).get("size") or 0,
+        "fs_type": (detected or {}).get("fs_type"),
+        "added_at": now(),
+    }
+    ignored_disks(config).append(entry)
+    save_config(config)
+    log(f"excluded {fs_uuid} ({entry['label'] or 'no label'})")
+    return {"ok": True, "disk": entry}
+
+
+def handle_unignore(request: dict) -> dict:
+    fs_uuid = require_uuid(request.get("fs_uuid"))
+    config = load_config()
+    before = len(ignored_disks(config))
+    config["ignored"] = [e for e in ignored_disks(config) if e["fs_uuid"] != fs_uuid]
+    if len(config["ignored"]) == before:
+        raise RuntimeError("this disk is not excluded")
+    save_config(config)
+    log(f"no longer excluded: {fs_uuid}")
+    return {"ok": True}
+
+
 class Handler(socketserver.StreamRequestHandler):
     timeout = 300
 
@@ -668,6 +741,11 @@ def admin(argv: list[str]) -> None:
     forget.add_argument("fs_uuid")
     sub.add_parser("scan")
     sub.add_parser("retired")
+    sub.add_parser("excluded")
+    exclude = sub.add_parser("exclude")
+    exclude.add_argument("fs_uuid")
+    include = sub.add_parser("include")
+    include.add_argument("fs_uuid")
     args = parser.parse_args(argv)
 
     if args.action == "list":
@@ -693,6 +771,17 @@ def admin(argv: list[str]) -> None:
         print("\nclear one with: ambershelf-helper --admin forget <fs-uuid>")
         return
 
+    if args.action == "excluded":
+        entries = ignored_disks(load_config())
+        if not entries:
+            print("no disk is excluded")
+            return
+        print("AmberShelf leaves these alone entirely:")
+        for entry in entries:
+            print(f"  {entry['fs_uuid']:<38} {entry.get('label') or '-':<20} "
+                  f"{entry.get('fs_type') or '-'}")
+        return
+
     if args.action == "scan":
         for entry in list_block_devices():
             marks = []
@@ -708,6 +797,14 @@ def admin(argv: list[str]) -> None:
         return
 
     config = load_config()
+
+    if args.action == "exclude":
+        print(handle_ignore({"fs_uuid": args.fs_uuid}))
+        return
+
+    if args.action == "include":
+        print(handle_unignore({"fs_uuid": args.fs_uuid}))
+        return
 
     if args.action == "forget":
         retired = retired_masters(config)

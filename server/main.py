@@ -434,15 +434,21 @@ def disks_page(request: Request):
     # A backup disk is one you can unplug. Everything else is hidden unless
     # asked for, and anything belonging to the running system is never
     # offered at all - the helper refuses those anyway.
-    usable = [v for v in volumes if not v["system"]]
+    usable = [v for v in volumes if not v["system"] and not v["ignored"]]
     removable = [v for v in usable if v["removable"]]
     connected = usable if show_all else removable
     hidden = len(volumes) - len(connected)
+
+    try:
+        excluded = backend.ignored_disks()
+    except BackendError:
+        excluded = []
     registered = db.query("SELECT * FROM disks ORDER BY set_name, role DESC")
     return render("disks.html", request, connected=connected, error=error,
                   registered=registered,
-                  show_all=show_all, hidden=hidden,
+                  show_all=show_all, hidden=hidden, excluded=excluded,
                   system_count=sum(1 for v in volumes if v["system"]),
+                  ignored_count=sum(1 for v in volumes if v["ignored"]),
                   removing=request.query_params.get("remove"),
                   removing_set=request.query_params.get("remove_set"),
                   sets_in_use=sorted({row["set_name"] for row in registered}),
@@ -500,6 +506,27 @@ def forget_whole_set(request: Request, set_name: str, confirm: str = Form("")):
                  None, "disks")
     refresh_registrations()
     return flash(request, "/disks", "forget.done", "ok")
+
+
+@app.post("/disks/ignore")
+def ignore_disk(request: Request, fs_uuid: str = Form(...)):
+    """Put a disk out of reach: never listed, registered or mounted."""
+    try:
+        backend.ignore(fs_uuid.strip())
+    except BackendError as exc:
+        return flash(request, "/disks", str(exc), "error")
+    db.log_event("info", f"{fs_uuid} excluded", None, "disks")
+    return flash(request, "/disks", "exclude.done", "ok")
+
+
+@app.post("/disks/unignore")
+def unignore_disk(request: Request, fs_uuid: str = Form(...)):
+    try:
+        backend.unignore(fs_uuid.strip())
+    except BackendError as exc:
+        return flash(request, "/disks", str(exc), "error")
+    db.log_event("info", f"{fs_uuid} no longer excluded", None, "disks")
+    return flash(request, "/disks", "exclude.undone", "ok")
 
 
 @app.post("/disks/register")

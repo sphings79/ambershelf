@@ -174,6 +174,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Ordnerebene für die Aufteilung",
         "settings.language": "Sprache",
         "settings.saved": "Gespeichert.",
+        "exclude.title": "Dauerhaft ausgeschlossen",
+        "exclude.help": "Diese Platte dauerhaft ausschließen",
+        "exclude.hidden": "{count} ausgeschlossen",
+        "exclude.undo": "Wieder zulassen",
+        "exclude.done": "Ausgeschlossen. AmberShelf fasst die Platte nicht mehr an.",
+        "exclude.undone": "Nicht mehr ausgeschlossen.",
+        "exclude.note":
+            "Diese Platten erscheinen nirgends mehr und lassen sich weder "
+            "registrieren noch einhängen — auch nicht versehentlich. Auf ihnen "
+            "wird nichts angefasst.",
         "disks.system_hidden": "{count} Systempartitionen ausgeblendet",
         "disks.show_all": "Auch {count} feste Platten zeigen",
         "disks.only_removable": "Nur Wechseldatenträger",
@@ -564,6 +574,15 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.assignment_depth": "Folder level used for splitting",
         "settings.language": "Language",
         "settings.saved": "Saved.",
+        "exclude.title": "Excluded for good",
+        "exclude.help": "Exclude this disk for good",
+        "exclude.hidden": "{count} excluded",
+        "exclude.undo": "Allow again",
+        "exclude.done": "Excluded. AmberShelf will not touch that disk.",
+        "exclude.undone": "No longer excluded.",
+        "exclude.note":
+            "These disks appear nowhere and can neither be registered nor mounted, "
+            "not even by accident. Nothing on them is touched.",
         "disks.system_hidden": "{count} system partitions hidden",
         "disks.show_all": "Also show {count} fixed disks",
         "disks.only_removable": "Removable only",

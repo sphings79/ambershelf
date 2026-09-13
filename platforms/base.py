@@ -30,6 +30,9 @@ class Volume:
     #: Part of the running system - the root filesystem, swap, /boot. Never
     #: registrable, whatever the interface shows.
     system: bool = False
+    #: Put out of reach by the user: never listed, never registered, never
+    #: mounted.
+    ignored: bool = False
     model: str | None = None
     registration: dict | None = None
 
@@ -39,7 +42,7 @@ class Volume:
             "fs_uuid": self.fs_uuid, "serial": self.serial, "label": self.label,
             "fs_type": self.fs_type, "size": self.size, "mountpoint": self.mountpoint,
             "removable": self.removable, "read_only": self.read_only,
-            "system": self.system,
+            "system": self.system, "ignored": self.ignored,
             "model": self.model, "registration": self.registration,
         }
 
@@ -90,6 +93,13 @@ class Backend(Protocol):
 
     def unregister(self, fs_uuid: str) -> dict:
         """Forget a disk. Never touches what is on it."""
+
+    def ignore(self, fs_uuid: str) -> dict:
+        """Leave this disk alone from now on."""
+
+    def unignore(self, fs_uuid: str) -> dict: ...
+
+    def ignored_disks(self) -> list[dict]: ...
 
     def attach(self, set_name: str) -> MountReport: ...
 

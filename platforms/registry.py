@@ -129,5 +129,41 @@ class JsonRegistry:
             return True
         return False
 
+    # ------------------------------------------------------------ ignored --
+
+    def ignored(self) -> list[dict]:
+        return self.load().setdefault("ignored", [])
+
+    def is_ignored(self, fs_uuid: str) -> bool:
+        return any(e["fs_uuid"] == fs_uuid for e in self.ignored())
+
+    def ignore(self, fs_uuid: str, volume=None) -> dict:
+        data = self.load()
+        entries = data.setdefault("ignored", [])
+        if any(e["fs_uuid"] == fs_uuid for e in entries):
+            return {"ok": True, "already": True}
+        if any(d["fs_uuid"] == fs_uuid for d in data["disks"]):
+            raise ValueError("this disk is registered - forget it first")
+        entries.append({
+            "fs_uuid": fs_uuid,
+            "label": getattr(volume, "label", None),
+            "serial": getattr(volume, "serial", None),
+            "size": getattr(volume, "size", 0),
+            "fs_type": getattr(volume, "fs_type", None),
+            "added_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        })
+        self.save(data)
+        return {"ok": True}
+
+    def unignore(self, fs_uuid: str) -> dict:
+        data = self.load()
+        entries = data.setdefault("ignored", [])
+        remaining = [e for e in entries if e["fs_uuid"] != fs_uuid]
+        if len(remaining) == len(entries):
+            raise ValueError("this disk is not excluded")
+        data["ignored"] = remaining
+        self.save(data)
+        return {"ok": True}
+
     def of_set(self, set_name: str) -> list[dict]:
         return [d for d in self.all() if d["set_name"] == set_name]

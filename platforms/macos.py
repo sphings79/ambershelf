@@ -80,6 +80,7 @@ class MacBackend:
 
     def list_volumes(self) -> list[Volume]:
         known = {d["fs_uuid"]: d for d in self.registry.all()}
+        excluded = {e["fs_uuid"] for e in self.registry.ignored()}
         listing = diskutil("list", "external")
         volumes: list[Volume] = []
 
@@ -112,6 +113,7 @@ class MacBackend:
                     system=False,
                     model=(info.get("MediaName") or "").strip() or None,
                     registration=known.get(uuid),
+                    ignored=uuid in excluded,
                 ))
         return volumes
 
@@ -128,6 +130,8 @@ class MacBackend:
         volume = self.volume_by_uuid(fs_uuid)
         if volume is None:
             raise BackendError("this disk is not connected, so it cannot be registered")
+        if self.registry.is_ignored(fs_uuid):
+            raise BackendError("this disk is excluded - take it off that list first")
         if volume.fs_type not in ("exfat", "ntfs", "vfat", "apfs", "hfs"):
             raise BackendError(f"filesystem {volume.fs_type!r} is not supported")
         try:
@@ -140,6 +144,21 @@ class MacBackend:
         if not self.registry.remove(fs_uuid):
             raise BackendError("this disk is not registered")
         return {"ok": True}
+
+    def ignore(self, fs_uuid: str) -> dict:
+        try:
+            return self.registry.ignore(fs_uuid, self.volume_by_uuid(fs_uuid))
+        except ValueError as exc:
+            raise BackendError(str(exc)) from exc
+
+    def unignore(self, fs_uuid: str) -> dict:
+        try:
+            return self.registry.unignore(fs_uuid)
+        except ValueError as exc:
+            raise BackendError(str(exc)) from exc
+
+    def ignored_disks(self) -> list[dict]:
+        return self.registry.ignored()
 
     # -------------------------------------------------------------- mounts --
 

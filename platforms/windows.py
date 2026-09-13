@@ -139,13 +139,17 @@ class WindowsBackend:
     def list_volumes(self, fresh: bool = False) -> list[Volume]:
         if not fresh and self._cache is not None \
                 and time.monotonic() - self._cached_at < CACHE_SECONDS:
-            # Registrations may have changed since, so those are re-joined.
+            # Registrations and exclusions may have changed since, so those
+            # are re-joined onto the cached listing.
             known = {d["fs_uuid"]: d for d in self.registry.all()}
+            excluded = {e["fs_uuid"] for e in self.registry.ignored()}
             for volume in self._cache:
                 volume.registration = known.get(volume.fs_uuid or "")
+                volume.ignored = volume.fs_uuid in excluded
             return self._cache
 
         known = {d["fs_uuid"]: d for d in self.registry.all()}
+        excluded = {e["fs_uuid"] for e in self.registry.ignored()}
         volumes: list[Volume] = []
 
         for row in powershell(LIST_SCRIPT):
@@ -168,6 +172,7 @@ class WindowsBackend:
                 system=bool(row.get("IsSystem")),
                 model=(row.get("Model") or None),
                 registration=known.get(uuid),
+                ignored=uuid in excluded,
             ))
 
         self._cache = volumes
@@ -189,6 +194,8 @@ class WindowsBackend:
             raise BackendError("this disk is not connected, so it cannot be registered")
         if volume.system:
             raise BackendError(f"{volume.id} is the system drive and cannot be registered")
+        if self.registry.is_ignored(fs_uuid):
+            raise BackendError("this disk is excluded - take it off that list first")
         if volume.fs_type not in ("exfat", "ntfs", "vfat"):
             raise BackendError(f"filesystem {volume.fs_type!r} is not supported")
         try:
@@ -201,6 +208,21 @@ class WindowsBackend:
         if not self.registry.remove(fs_uuid):
             raise BackendError("this disk is not registered")
         return {"ok": True}
+
+    def ignore(self, fs_uuid: str) -> dict:
+        try:
+            return self.registry.ignore(fs_uuid, self.volume_by_uuid(fs_uuid))
+        except ValueError as exc:
+            raise BackendError(str(exc)) from exc
+
+    def unignore(self, fs_uuid: str) -> dict:
+        try:
+            return self.registry.unignore(fs_uuid)
+        except ValueError as exc:
+            raise BackendError(str(exc)) from exc
+
+    def ignored_disks(self) -> list[dict]:
+        return self.registry.ignored()
 
     # -------------------------------------------------------------- mounts --
 
