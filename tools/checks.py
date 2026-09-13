@@ -13,6 +13,7 @@ import io
 import os
 import re
 import sys
+import tempfile
 from contextlib import redirect_stdout
 from pathlib import Path
 
@@ -273,6 +274,60 @@ def system_partitions_are_recognised() -> None:
           not wrong, "; ".join(wrong[:3]))
 
 
+def demotion_is_the_only_way_out_of_a_master() -> None:
+    """A master may be given up, but never quietly turned into a copy.
+
+    This is the rule the whole read-only guarantee rests on, so it is checked
+    rather than trusted: registering a retired disk as a copy is refused,
+    demoting it clears the retirement, and a mounted master is refused.
+    """
+    helper = load(ROOT / "docker" / "helper" / "ambershelf-helper.py")
+    uuid = "8A87-5E2B"
+
+    with tempfile.TemporaryDirectory() as folder:
+        helper.CONFIG_PATH = Path(folder) / "disks.conf"
+        helper.save_config({"version": 1, "retired_masters": [uuid], "disks": [
+            {"fs_uuid": uuid, "role": "master", "set_name": "fotoarchiv",
+             "display_name": "Master", "serial": "x", "label": None, "size": 1,
+             "fs_type": "exfat", "model": None},
+        ]})
+        helper.is_mounted = lambda _: False
+        helper.log = lambda _message: None
+        problems = []
+
+        try:
+            helper.handle_register({"fs_uuid": uuid, "role": "slave",
+                                    "set_name": "fotoarchiv",
+                                    "display_name": "Kopie"})
+            problems.append("a retired master could be registered as a copy")
+        except RuntimeError:
+            pass
+
+        helper.is_mounted = lambda _: True
+        try:
+            helper.handle_demote({"fs_uuid": uuid})
+            problems.append("a mounted master could be demoted")
+        except RuntimeError:
+            pass
+
+        helper.is_mounted = lambda _: False
+        helper.handle_demote({"fs_uuid": uuid})
+        config = helper.load_config()
+        if config["disks"]:
+            problems.append("the registration survived the demotion")
+        if uuid in helper.retired_masters(config):
+            problems.append("the disk stayed on the retired list")
+
+        try:
+            helper.handle_demote({"fs_uuid": "1111-2222"})
+            problems.append("an unknown disk could be demoted")
+        except RuntimeError:
+            pass
+
+    check("a master can be given up but never rewritten into a copy",
+          not problems, "; ".join(problems))
+
+
 def names_are_only_as_restricted_as_a_path() -> None:
     """A disk name becomes a folder - that is the only reason to restrict it.
 
@@ -370,6 +425,7 @@ def main() -> int:
     integrity_recognises_files()
     authentication_holds()
     system_partitions_are_recognised()
+    demotion_is_the_only_way_out_of_a_master()
     names_are_only_as_restricted_as_a_path()
     translations_match()
     templates_have_their_keys()

@@ -472,6 +472,9 @@ def disks_page(request: Request):
                   ignored_count=sum(1 for v in volumes if v["ignored"]),
                   removing=request.query_params.get("remove"),
                   removing_set=request.query_params.get("remove_set"),
+                  demoting=db.disk_by_uuid(
+                      (request.query_params.get("demote") or "").strip()),
+                  password_set=auth.password_is_set(),
                   sets_in_use=sorted({row["set_name"] for row in registered}),
                   indexed={row["id"]: scanner.scan_state(row["id"])["files"]
                            for row in registered},
@@ -527,6 +530,66 @@ def forget_whole_set(request: Request, set_name: str, confirm: str = Form("")):
                  None, "disks")
     refresh_registrations()
     return flash(request, "/disks", "forget.done", "ok")
+
+
+@app.post("/disks/demote")
+async def demote_master(request: Request):
+    """Give up a master, so the disk can be used as an ordinary copy again.
+
+    Three gates, because getting this wrong means a disk that was
+    write-protected is not any more: the warning has to be acknowledged, the
+    name has to be typed, and the password has to be given. What is on the
+    disk is never touched - the index and history of it are, and that is the
+    point: after this AmberShelf knows nothing about the disk.
+    """
+    form = await request.form()
+    fs_uuid = str(form.get("fs_uuid") or "").strip()
+    confirm = str(form.get("confirm") or "").strip()
+    password = str(form.get("password") or "")
+    understood = form.get("understood") == "1"
+
+    disk = db.disk_by_uuid(fs_uuid)
+    if disk is None:
+        return flash(request, "/disks", "forget.unknown", "error")
+    back_to = f"/disks?demote={quote(fs_uuid)}"
+    if disk["role"] != "master":
+        return flash(request, "/disks", "demote.not_master", "error")
+    if manager.busy_with() is not None:
+        return flash(request, "/disks", "forget.busy", "error")
+    if not understood:
+        return flash(request, back_to, "demote.not_understood", "error")
+    if confirm != disk["display_name"]:
+        return flash(request, back_to, "forget.name_wrong", "error")
+
+    # A wrong password here counts the same as a wrong password at the login
+    # form, so this cannot be used to try one out without being locked out.
+    if auth.password_is_set():
+        address = client_address(request)
+        if auth.locked_for(address) > 0:
+            return flash(request, back_to, "login.locked", "error")
+        if not auth.check_password(password):
+            auth.record_failure(address)
+            db.log_event("warning", f"failed password on demote from {address}",
+                         disk["set_name"], "disks")
+            return flash(request, back_to, "demote.password_wrong", "error")
+        auth.clear_failures(address)
+
+    name, set_name = disk["display_name"], disk["set_name"]
+    try:
+        backend.demote_master(fs_uuid)
+    except BackendError as exc:
+        db.log_event("error", f"demote refused: {exc}", set_name, "disks")
+        return flash(request, "/disks", str(exc), "error")
+
+    removed = db.forget_disk(disk["id"])
+    if db.set_is_empty(set_name):
+        removed.update(db.forget_set(set_name))
+    db.log_event("warning",
+                 f"{name} is no longer a master: registration removed, "
+                 + ", ".join(f"{k} {v}" for k, v in removed.items())
+                 + " - it may be registered as a copy now", set_name, "disks")
+    refresh_registrations()
+    return flash(request, "/disks", "demote.done", "ok")
 
 
 @app.post("/disks/ignore")

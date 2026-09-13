@@ -78,12 +78,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.display_name": "Anzeigename",
         "disks.set_name": "Satz",
         "disks.already": "bereits registriert",
-        "disks.role_locked": "Rollen ändern nur auf dem Host",
+        "disks.role_locked": "Rollen lassen sich nicht umschreiben",
         "disks.role_locked_help":
-            "Hinzufügen und Vergessen kannst du hier. Eine Rolle ändern nicht — "
-            "das geht bewusst nur auf dem Host: sudo ambershelf-helper --admin "
-            "set-role <uuid> slave. Aus demselben Grund lässt sich eine Platte, "
-            "die einmal Master war, hier nur wieder als Master anlegen.",
+            "Hinzufügen und Vergessen kannst du hier. Eine bestehende Rolle "
+            "umschreiben nicht — dafür gibt es keinen Weg, weder hier noch sonstwo. "
+            "Einen Master gibst du stattdessen ganz auf (\u201eMaster aufgeben\u201c), danach "
+            "ist die Platte unbekannt und du kannst sie neu registrieren, in welcher "
+            "Rolle du willst.",
         "disks.register_help":
             "Der Master wird immer nur lesend eingehängt. Prüfe die Rolle, bevor "
             "du registrierst — ändern lässt sie sich danach nur noch am Host.",
@@ -255,7 +256,38 @@ STRINGS: dict[str, dict[str, str]] = {
             "Vergessen löscht nur, was AmberShelf über die Platte weiß — "
             "Verzeichnis, Zuteilungen, Verlauf. Auf der Platte selbst wird nichts "
             "angefasst. Eine Platte, die einmal Master war, lässt sich danach nur "
-            "wieder als Master registrieren; alles andere geht nur auf dem Host.",
+            "wieder als Master registrieren — es sei denn, du gibst den Master "
+            "ausdrücklich auf.",
+        "demote.button": "Master aufgeben",
+        "demote.help": "Diese Platte ist dann kein Master mehr",
+        "demote.title": "{name} als Master aufgeben",
+        "demote.what":
+            "Danach kennt AmberShelf diese Platte nicht mehr und du kannst sie neu "
+            "registrieren — auch als Kopie, und die wird beschrieben.",
+        "demote.effect_registration": "Die Registrierung von {name} wird entfernt.",
+        "demote.effect_index":
+            "Verzeichnis, Vergleiche, Zuteilungen und Verlauf dieser Platte werden "
+            "gelöscht. Nach einer Neuregistrierung muss neu eingelesen werden.",
+        "demote.effect_writable":
+            "Der Schreibschutz gilt nur für Master. Registrierst du die Platte "
+            "danach als Kopie, hängt AmberShelf sie schreibbar ein und kann Dateien "
+            "darauf anlegen, ändern und löschen.",
+        "demote.effect_data":
+            "Auf der Platte selbst wird jetzt nichts angefasst — keine einzige Datei.",
+        "demote.understood":
+            "Ich weiß, dass diese Platte danach beschreibbar werden kann.",
+        "demote.type_name": "Zum Bestätigen den Namen eintippen",
+        "demote.password": "Passwort",
+        "demote.do": "Master aufgeben",
+        "demote.done":
+            "Master aufgegeben. Die Platte ist jetzt unbekannt und kann neu "
+            "registriert werden. Auf der Platte wurde nichts angefasst.",
+        "demote.not_master": "Diese Platte ist kein Master.",
+        "demote.not_understood": "Erst den Hinweis bestätigen.",
+        "demote.password_wrong": "Passwort falsch — es wurde nichts geändert.",
+        "demote.no_password":
+            "Für diese Installation ist kein Passwort gesetzt, deshalb wird hier "
+            "keins abgefragt.",
         "first.title": "Passwort festlegen",
         "first.body":
             "Du hast dich mit dem erzeugten Passwort angemeldet. Leg jetzt ein "
@@ -528,12 +560,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.display_name": "Name",
         "disks.set_name": "Set",
         "disks.already": "already registered",
-        "disks.role_locked": "Roles are changed on the host only",
+        "disks.role_locked": "Roles are never rewritten",
         "disks.role_locked_help":
-            "Adding and forgetting happen here. Changing a role does not - that is "
-            "deliberate and has to be done on the host: sudo ambershelf-helper "
-            "--admin set-role <uuid> slave. For the same reason a disk that has "
-            "been a master can only be added here as a master again.",
+            "Adding and forgetting happen here. Rewriting the role of a registered "
+            "disk does not - there is no path for it anywhere. Instead you give a "
+            "master up entirely (\u201cGive up master\u201d); the disk is then unknown "
+            "and you can register it again in whatever role you want.",
         "disks.register_help":
             "A master is always mounted read-only. Check the role before registering - "
             "afterwards it can only be changed on the host.",
@@ -703,8 +735,36 @@ STRINGS: dict[str, dict[str, str]] = {
             "Forgetting removes only what AmberShelf knows about the disk - the "
             "index, the assignments, the history. Nothing on the disk itself is "
             "touched. A disk that has been a master can afterwards only be "
-            "registered as a master again; anything else has to be done on the "
-            "host.",
+            "registered as a master again - unless you give the master up "
+            "deliberately.",
+        "demote.button": "Give up master",
+        "demote.help": "This disk stops being a master",
+        "demote.title": "Give up {name} as a master",
+        "demote.what":
+            "Afterwards AmberShelf does not know this disk any more and you can "
+            "register it again - as a copy too, and a copy is written to.",
+        "demote.effect_registration": "The registration of {name} is removed.",
+        "demote.effect_index":
+            "The index, comparisons, assignments and history of this disk are "
+            "deleted. After registering it again it has to be indexed from scratch.",
+        "demote.effect_writable":
+            "Write protection applies to masters only. Register the disk as a copy "
+            "afterwards and AmberShelf mounts it writable and may create, change "
+            "and delete files on it.",
+        "demote.effect_data":
+            "Nothing on the disk itself is touched right now - not a single file.",
+        "demote.understood": "I know this disk can become writable afterwards.",
+        "demote.type_name": "Type the name to confirm",
+        "demote.password": "Password",
+        "demote.do": "Give up master",
+        "demote.done":
+            "Master given up. The disk is unknown now and can be registered again. "
+            "Nothing on the disk was touched.",
+        "demote.not_master": "This disk is not a master.",
+        "demote.not_understood": "Acknowledge the warning first.",
+        "demote.password_wrong": "Wrong password - nothing was changed.",
+        "demote.no_password":
+            "This installation has no password set, so none is asked for here.",
         "first.title": "Choose a password",
         "first.body":
             "You signed in with the generated password. Choose your own now - "

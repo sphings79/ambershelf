@@ -137,9 +137,17 @@ Der Container kann nur darum **bitten**, einen Satz einzuhängen. Er benennt nie
 nie eine Einhänge-Option und entscheidet nie über eine Rolle — das ist es, was den Master
 schützt, selbst wenn der Container vollständig übernommen wird.
 
-Registrieren über den Socket geht **nur hinzufügend**, mit Absicht. Eine Rolle ändern oder
-eine Registrierung entfernen verlangt einen bewussten Befehl auf dem Host; sonst wäre
-Löschen-und-neu-anlegen ein Weg an der Regel vorbei.
+Registrieren über den Socket geht **nur hinzufügend**, mit Absicht: Eine bestehende Rolle
+wird nie umgeschrieben. Eine Platte, die einmal Master war, merkt sich der Host — sie lässt
+sich danach nur wieder als Master anlegen, sonst wäre Löschen-und-neu-anlegen ein Weg an
+der Regel vorbei.
+
+Diese Sperre lösen kannst du, in der Oberfläche unter „Master aufgeben": Hinweis bestätigen,
+Plattennamen eintippen, Passwort eingeben. Die Registrierung wird dabei **entfernt**, nicht
+umgeschrieben — die Platte danach als Kopie anzulegen ist ein zweiter, eigener Schritt, und
+solange der Satz eingehängt ist, wird das Aufgeben verweigert. Der Preis ist ehrlich zu
+benennen: Der Vorgang läuft über denselben Socket wie alles andere, wer also den Container
+übernimmt *und* an das Passwort kommt, erreicht ihn auch.
 
 ## Drei Wege
 

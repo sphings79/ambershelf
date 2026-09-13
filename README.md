@@ -131,9 +131,17 @@ The container can only ask for a **set** to be mounted. It never names a device,
 names a mount option, and never decides a role — that is what keeps the master safe even
 if the container is fully compromised.
 
-Registration over the socket is **add-only** on purpose. Changing a role or removing a
-registration requires a deliberate command on the host; otherwise delete-and-re-add would
-be a way around the rule.
+Registration over the socket is **add-only** on purpose: an existing role is never
+rewritten. A disk that has been a master is remembered by the host and can afterwards only
+be registered as a master again - otherwise delete-and-re-add would be a way around the
+rule.
+
+You can lift that block, in the interface under "Give up master": acknowledge the warning,
+type the disk name, give the password. The registration is **removed** rather than
+rewritten - registering the disk as a copy afterwards is a second, separate step - and
+giving a master up is refused while the set is mounted. The price is worth stating plainly:
+this runs over the same socket as everything else, so whoever owns the container *and* gets
+hold of the password can reach it too.
 
 ## Three ways to run it
 

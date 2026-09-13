@@ -33,6 +33,9 @@ class Volume:
     #: Put out of reach by the user: never listed, never registered, never
     #: mounted.
     ignored: bool = False
+    #: Has been a master at some point, so it cannot become a copy until it
+    #: is demoted. Only the protected registry keeps such a list.
+    retired: bool = False
     #: False when there is nothing AmberShelf can work with here.
     usable: bool = True
     #: Why not, as a key the interface can translate.
@@ -62,6 +65,7 @@ class Volume:
             "fs_type": self.fs_type, "size": self.size, "mountpoint": self.mountpoint,
             "removable": self.removable, "read_only": self.read_only,
             "system": self.system, "ignored": self.ignored,
+            "retired": self.retired,
             "model": self.model, "registration": self.registration,
         }
 
@@ -112,6 +116,14 @@ class Backend(Protocol):
 
     def unregister(self, fs_uuid: str) -> dict:
         """Forget a disk. Never touches what is on it."""
+
+    def demote_master(self, fs_uuid: str) -> dict:
+        """Give up a master, so the disk may be a copy again.
+
+        Removes the registration and whatever the platform remembers about
+        the disk having been a master. Never touches what is on it, and never
+        writes a new role - registering it again is a separate act.
+        """
 
     def ignore(self, fs_uuid: str) -> dict:
         """Leave this disk alone from now on."""

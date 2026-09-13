@@ -95,6 +95,7 @@ class LinuxBackend:
                 removable=bool(entry.get("removable")),
                 system=bool(entry.get("system")),
                 ignored=bool(entry.get("ignored")),
+                retired=bool(entry.get("retired")),
                 usable=bool(entry.get("usable", True)),
                 reason=entry.get("reason"),
                 token=entry.get("token"),
@@ -113,6 +114,9 @@ class LinuxBackend:
 
     def unregister(self, fs_uuid: str) -> dict:
         return call("unregister", fs_uuid=fs_uuid)
+
+    def demote_master(self, fs_uuid: str) -> dict:
+        return call("demote", fs_uuid=fs_uuid)
 
     def ignore(self, fs_uuid: str) -> dict:
         return call("ignore", fs_uuid=fs_uuid)

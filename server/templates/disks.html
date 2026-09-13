@@ -229,6 +229,52 @@
     </div>
   {% endif %}
 
+  {% if demoting %}
+    <form method="post" action="/disks/demote" style="margin-bottom:14px">
+      <input type="hidden" name="fs_uuid" value="{{ demoting.fs_uuid }}">
+      <div class="note error">
+        <span class="note-icon">{{ ui.icon('unlock', 18) }}</span>
+        <div>
+          <strong>{{ t('demote.title', name=demoting.display_name) }}</strong>
+          <p>{{ t('demote.what') }}</p>
+          <ul>
+            <li>{{ t('demote.effect_registration', name=demoting.display_name) }}</li>
+            <li>{{ t('demote.effect_index') }}</li>
+            <li>{{ t('demote.effect_writable') }}</li>
+            <li>{{ t('demote.effect_data') }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <label class="check" style="margin-bottom:8px">
+        <input type="checkbox" name="understood" value="1" required>
+        {{ t('demote.understood') }}
+      </label>
+
+      <div class="actions">
+        <label class="field" style="flex:0 0 auto">
+          <span>{{ t('demote.type_name') }}</span>
+          <input name="confirm" autocomplete="off" required size="16"
+                 placeholder="{{ demoting.display_name }}">
+        </label>
+        {% if password_set %}
+          <label class="field" style="flex:0 0 auto">
+            <span>{{ t('demote.password') }}</span>
+            <input type="password" name="password" required size="16"
+                   autocomplete="current-password">
+          </label>
+        {% endif %}
+        <button class="danger" style="align-self:flex-end">
+          {{ ui.icon('unlock', 15) }} {{ t('demote.do') }}</button>
+        <a class="button quiet" href="/disks"
+           style="align-self:flex-end">{{ t('common.cancel') }}</a>
+      </div>
+      {% if not password_set %}
+        <p class="muted small">{{ t('demote.no_password') }}</p>
+      {% endif %}
+    </form>
+  {% endif %}
+
   {% if not registered %}
     <p class="muted" style="margin:0">{{ t('disks.none_registered') }}</p>
   {% else %}
@@ -274,6 +320,11 @@
                   <a class="button quiet" href="/disks">{{ t('common.cancel') }}</a>
                 </form>
               {% else %}
+                {% if d.role == 'master' %}
+                  <a class="button quiet" href="/disks?demote={{ d.fs_uuid }}"
+                     title="{{ t('demote.help') }}">
+                    {{ ui.icon('unlock', 14) }} {{ t('demote.button') }}</a>
+                {% endif %}
                 <a class="button quiet" href="/disks?remove={{ d.fs_uuid }}"
                    title="{{ t('forget.help') }}">{{ ui.icon('close', 14) }}</a>
               {% endif %}

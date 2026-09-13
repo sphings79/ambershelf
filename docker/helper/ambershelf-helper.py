@@ -20,14 +20,28 @@ The guarantees this file exists to provide:
   3. Roles of already registered disks cannot be changed over the socket.
      Registrations *can* be removed - forgetting a mistyped disk is ordinary
      work - but a disk that has been a master is written to a retired list,
-     and from then on the socket will only ever register it as a master
-     again. That closes remove-and-re-add, which would otherwise be a way
-     around rule 3.
+     and from then on it will only ever be registered as a master again. That
+     closes remove-and-re-add, which would otherwise be a way around rule 3.
   4. Only exfat, ntfs and ext4 are accepted, each with a fixed option set
      defined here.
 
 Adding an unknown disk is harmless; re-labelling a known master as a slave is
 not. That is the whole shape of what the socket may and may not do.
+
+One deliberate exception to rule 3
+----------------------------------
+``demote`` takes a disk off the retired list, which is what lets a former
+master become a copy. It exists because the owner of the machine has to be
+able to repurpose their own disk without a terminal, and it is worth being
+honest about the price: this command runs over the same socket as everything
+else, so an attacker who owns the container and can get hold of the
+application password can reach it too.
+
+What it does *not* give away: it only ever removes a registration, never
+rewrites one. A demoted disk is unregistered and unknown afterwards, so
+turning it into a writable copy takes a second, separate, deliberate
+registration. And it refuses while the set is mounted, so it can never change
+the role of a disk that is mounted read-only right now.
 """
 from __future__ import annotations
 
@@ -517,7 +531,9 @@ def handle(request: dict) -> dict:
         for entry in list_block_devices():
             registration = known.get(entry["fs_uuid"] or "")
             devices.append({**entry, "registration": registration,
-                            "ignored": is_ignored(config, entry["fs_uuid"] or "")})
+                            "ignored": is_ignored(config, entry["fs_uuid"] or ""),
+                            "retired": (entry["fs_uuid"] or "")
+                                       in retired_masters(config)})
         return {"ok": True, "disks": devices,
                 "ignored": ignored_disks(config)}
 
@@ -529,6 +545,9 @@ def handle(request: dict) -> dict:
 
     if command == "unregister":
         return handle_unregister(request)
+
+    if command == "demote":
+        return handle_demote(request)
 
     if command == "ignore":
         return handle_ignore(request)
@@ -626,10 +645,9 @@ def handle_register(request: dict) -> dict:
 
     if role != "master" and fs_uuid in retired_masters(config):
         raise RuntimeError(
-            "this disk has been a master. Registering it as a copy has to be "
-            "done on the host with 'ambershelf-helper --admin forget', "
-            "because otherwise removing a registration would be a way to turn "
-            "a master into a copy.")
+            "this disk has been a master. Demote it first - that is a separate, "
+            "deliberate step, because otherwise forgetting a registration would "
+            "quietly turn a master into a copy.")
 
     if role == "master" and any(
         d["set_name"] == set_name and d["role"] == "master" for d in config["disks"]
@@ -696,6 +714,42 @@ def handle_unregister(request: dict) -> dict:
     config["disks"] = [d for d in config["disks"] if d["fs_uuid"] != fs_uuid]
     save_config(config)
     log(f"unregistered {disk['display_name']!r} ({fs_uuid}, was {disk['role']})")
+    return {"ok": True, "disk": disk}
+
+
+def handle_demote(request: dict) -> dict:
+    """Let a disk that has been a master be an ordinary disk again.
+
+    This is the one command that undoes a retirement, so it is the only way
+    the socket can end up with a former master registered as a copy. It is
+    kept as narrow as it can be: the registration is removed rather than
+    rewritten, and a mounted set is refused outright, so nothing that is
+    mounted read-only right now can have its role changed underneath it.
+    """
+    fs_uuid = require_uuid(request.get("fs_uuid"))
+    config = load_config()
+    disk = find_disk(config, fs_uuid)
+
+    if disk is not None:
+        if disk["role"] != "master":
+            raise RuntimeError(
+                f"{disk['display_name']} is not a master - "
+                "an ordinary disk is forgotten, not demoted")
+        if is_mounted(mountpoint_for(disk)):
+            raise RuntimeError(
+                f"{disk['display_name']} is still mounted - eject the set first")
+        config["disks"] = [d for d in config["disks"] if d["fs_uuid"] != fs_uuid]
+    elif fs_uuid not in retired_masters(config):
+        raise RuntimeError("this disk is not a master and has never been one")
+
+    retired = retired_masters(config)
+    if fs_uuid in retired:
+        retired.remove(fs_uuid)
+    save_config(config)
+
+    name = disk["display_name"] if disk else fs_uuid
+    log(f"demoted {name!r} ({fs_uuid}): registration removed and taken off the "
+        f"retired list - it may be registered as a copy from now on")
     return {"ok": True, "disk": disk}
 
 
@@ -1050,7 +1104,7 @@ def admin(argv: list[str]) -> None:
         if disk["role"] == "master":
             retire_master(config, args.fs_uuid)
             print("noted as a former master - registering it as a copy later "
-                  "needs 'ambershelf-helper --admin forget' first")
+                  "needs demoting it first, here or in AmberShelf")
         config["disks"] = [d for d in config["disks"] if d["fs_uuid"] != args.fs_uuid]
         save_config(config)
         print("done")

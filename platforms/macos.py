@@ -145,6 +145,14 @@ class MacBackend:
             raise BackendError("this disk is not registered")
         return {"ok": True}
 
+    def demote_master(self, fs_uuid: str) -> dict:
+        """The same as forgetting it - nothing here remembers a retirement.
+
+        This registry is not protected from the application in the first
+        place (the warning band says so), so there is no list to clear.
+        """
+        return self.unregister(fs_uuid)
+
     def ignore(self, fs_uuid: str) -> dict:
         try:
             return self.registry.ignore(fs_uuid, self.volume_by_uuid(fs_uuid))
