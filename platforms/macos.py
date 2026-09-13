@@ -17,9 +17,11 @@ from __future__ import annotations
 
 import os
 import plistlib
+import re
 import subprocess
 from pathlib import Path
 
+from platforms import smart
 from platforms.base import BackendError, MountReport, Volume
 from platforms.registry import JsonRegistry
 
@@ -144,6 +146,19 @@ class MacBackend:
         if not self.registry.remove(fs_uuid):
             raise BackendError("this disk is not registered")
         return {"ok": True}
+
+    def smart(self, fs_uuid: str) -> dict:
+        """Ask the whole disk, not the slice - SMART lives in the drive.
+
+        smartctl is not part of macOS. When it is not there the interface
+        says so and names the one command that installs it, rather than
+        pretending the disk had nothing to report.
+        """
+        volume = self.volume_by_uuid(fs_uuid)
+        if volume is None:
+            return smart.interpret({"ok": False, "reason": "smart.not_connected"})
+        whole = re.sub(r"s\d+$", "", volume.id.rsplit("/", 1)[-1])
+        return smart.interpret(smart.run_smartctl(f"/dev/{whole}"))
 
     def can_demote(self) -> bool:
         return True

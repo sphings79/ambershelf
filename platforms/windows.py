@@ -27,6 +27,7 @@ import sys
 import time
 from pathlib import Path
 
+from platforms import smart
 from platforms.base import BackendError, MountReport, Volume
 from platforms.registry import JsonRegistry
 
@@ -69,6 +70,7 @@ foreach ($v in Get-Volume) {
         Model       = if ($disk) { [string]$disk.FriendlyName } else { $null }
         BusType     = if ($disk) { [string]$disk.BusType } else { $null }
         ReadOnly    = if ($disk) { [bool]$disk.IsReadOnly } else { $false }
+        DiskNumber  = if ($part) { [int]$part.DiskNumber } else { $null }
         IsSystem    = ($letter + ":") -eq $env:SystemDrive
     }
 }
@@ -126,6 +128,8 @@ class WindowsBackend:
         self.registry = JsonRegistry()
         self._cache: list[Volume] | None = None
         self._cached_at = 0.0
+        #: fs_uuid -> physical drive number, for asking a drive about itself.
+        self._physical: dict[str, int] = {}
 
     def available(self) -> bool:
         try:
@@ -151,11 +155,14 @@ class WindowsBackend:
         known = {d["fs_uuid"]: d for d in self.registry.all()}
         excluded = {e["fs_uuid"] for e in self.registry.ignored()}
         volumes: list[Volume] = []
+        self._physical = {}
 
         for row in powershell(LIST_SCRIPT):
             uuid = volume_uuid(row.get("UniqueId"))
             if not uuid:
                 continue
+            if row.get("DiskNumber") is not None:
+                self._physical[uuid] = int(row["DiskNumber"])
             letter = (row.get("DriveLetter") or "").strip()
             filesystem = (row.get("FileSystem") or "").strip().lower()
             volumes.append(Volume(
@@ -208,6 +215,18 @@ class WindowsBackend:
         if not self.registry.remove(fs_uuid):
             raise BackendError("this disk is not registered")
         return {"ok": True}
+
+    def smart(self, fs_uuid: str) -> dict:
+        """Ask the physical drive behind a drive letter.
+
+        smartctl is not part of Windows. Without it the interface says so
+        rather than claiming the disk reported nothing.
+        """
+        self.list_volumes()
+        number = self._physical.get(fs_uuid)
+        if number is None:
+            return smart.interpret({"ok": False, "reason": "smart.not_connected"})
+        return smart.interpret(smart.run_smartctl(f"/dev/pd{number}"))
 
     def can_demote(self) -> bool:
         return True

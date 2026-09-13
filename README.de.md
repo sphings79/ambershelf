@@ -151,6 +151,21 @@ benennen: Der Vorgang läuft über denselben Socket wie alles andere, wer also d
 es mit `"allow_demote": false` in `/etc/ambershelf/disks.conf` ganz ab — dann bleibt nur
 `ambershelf-helper --admin` auf dem Host.
 
+### Plattenzustand (SMART)
+
+AmberShelf fragt jede registrierte Platte, was sie über sich selbst zu sagen hat —
+auf Knopfdruck unter **Platten** und automatisch bei jedem Einhängen. Schlafende
+Platten werden dafür nicht aufgeweckt.
+
+Gemeldet wird nur, was man auch tun kann: ersetzte Sektoren, Sektoren die gerade
+nicht lesbar sind, endgültig verlorene Sektoren, und Übertragungsfehler — letztere
+ausdrücklich als Hinweis auf Kabel, Gehäuse oder Stromversorgung statt auf die
+Platte. Der Rest wird als Zahl ohne Meinung gezeigt.
+
+Dafür muss `smartmontools` installiert sein (`sudo apt install smartmontools`, am
+Mac `brew install smartmontools`). Fehlt es, oder reicht ein USB-Gehäuse die Abfrage
+nicht durch, steht das genau so da — nie „alles in Ordnung".
+
 ## Drei Wege
 
 | | Quelle schreibgeschützt | Braucht | Bezug |

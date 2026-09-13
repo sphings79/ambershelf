@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from platforms import smart
+
 
 @dataclass
 class Volume:
@@ -116,6 +118,15 @@ class Backend(Protocol):
 
     def unregister(self, fs_uuid: str) -> dict:
         """Forget a disk. Never touches what is on it."""
+
+    def smart(self, fs_uuid: str) -> dict:
+        """What the disk says about its own health, already interpreted.
+
+        Always answers - a disk that cannot be asked comes back with
+        ``available`` False and a reason, because "no answer" is itself
+        something the interface has to show.
+        """
+        return smart.interpret({"ok": False, "reason": "smart.unsupported"})
 
     def can_demote(self) -> bool:
         """Whether giving up a master is reachable from here at all.

@@ -210,6 +210,15 @@
     </div>
   </div>
 
+  {% if registered %}
+    <div class="actions" style="margin-bottom:12px">
+      <form class="inline" method="post" action="/disks/smart">
+        <button class="quiet">{{ ui.icon('refresh', 15) }} {{ t('smart.check_all') }}</button>
+      </form>
+      <span class="faint small">{{ t('smart.note') }}</span>
+    </div>
+  {% endif %}
+
   {% if sets_in_use %}
     <div class="actions" style="margin-bottom:12px">
       {% for name in sets_in_use %}
@@ -289,6 +298,7 @@
             <th>{{ t('disks.fstype') }}</th>
             <th class="num">{{ t('common.size') }}</th>
             <th>{{ t('disks.uuid') }}</th>
+            <th>{{ t('smart.column') }}</th>
             <th></th>
           </tr>
         </thead>
@@ -308,6 +318,30 @@
               {% endif %}</td>
             <td class="id-cell"><div class="mono id small">{{ d.fs_uuid }}</div>
               <div class="faint small mono id">{{ d.serial or '' }}</div></td>
+            <td>
+              {% set s = smart.get(d.id) %}
+              {% if not s %}
+                <span class="chip outline">{{ t('smart.never') }}</span>
+              {% elif not s.available %}
+                <span class="chip warn" title="{{ t(s.reason) }}">
+                  {{ ui.icon('alert', 12) }} {{ t('smart.unavailable') }}</span>
+              {% else %}
+                <span class="chip {{ {'ok':'ok','warn':'warn','danger':'danger'}[s.level] }}">
+                  {{ ui.icon('check' if s.level == 'ok' else 'alert', 12) }}
+                  {{ t('smart.level.' ~ s.level) }}</span>
+                <div class="faint small" style="margin-top:4px">
+                  {% if s.readings.temperature %}{{ s.readings.temperature }} °C · {% endif %}
+                  {% if s.readings.power_on_hours %}
+                    {{ t('smart.hours', hours=s.readings.power_on_hours|thousands) }}
+                  {% endif %}
+                </div>
+                {% for a in s.alarms %}
+                  <div class="small {{ a.level }}">
+                    {{ t(a.key) }}{% if a.count is not none %}: {{ a.count }}{% endif %}</div>
+                {% endfor %}
+                <div class="faint small">{{ s.checked_at|dt }}</div>
+              {% endif %}
+            </td>
             <td class="right">
               {% if removing == d.fs_uuid %}
                 <form class="actions" method="post" action="/disks/forget"

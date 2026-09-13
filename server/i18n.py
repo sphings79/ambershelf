@@ -265,6 +265,46 @@ STRINGS: dict[str, dict[str, str]] = {
             "einschalten mit \"allow_demote\": true in /etc/ambershelf/disks.conf.",
         "demote.switched_off":
             "Master aufgeben ist auf diesem Host abgeschaltet.",
+        "smart.column": "Zustand (SMART)",
+        "smart.check_all": "Plattenzustand prüfen",
+        "smart.note":
+            "Wird auch bei jedem Einhängen automatisch geholt. Schlafende Platten "
+            "werden dafür nicht aufgeweckt.",
+        "smart.never": "noch nicht geprüft",
+        "smart.unavailable": "keine Auskunft",
+        "smart.level.ok": "unauffällig",
+        "smart.level.warn": "auffällig",
+        "smart.level.danger": "kritisch",
+        "smart.level.unknown": "keine Auskunft",
+        "smart.hours": "{hours} Betriebsstunden",
+        "smart.found_ok": "Alle Platten melden unauffällige Werte.",
+        "smart.found_warn": "Mindestens eine Platte meldet auffällige Werte — siehe Platten.",
+        "smart.found_danger": "Mindestens eine Platte meldet kritische Werte — siehe Platten.",
+        "smart.no_binary":
+            "smartctl ist nicht installiert. Auf dem Docker-Host: "
+            "sudo apt install smartmontools. Am Mac: brew install smartmontools.",
+        "smart.unsupported":
+            "Diese Platte gibt ihre SMART-Werte nicht heraus. Bei USB-Gehäusen ist "
+            "das häufig — der Chip im Gehäuse reicht die Abfrage nicht durch.",
+        "smart.unreadable": "Die Antwort der Platte war nicht lesbar.",
+        "smart.timeout": "Die Platte hat nicht geantwortet.",
+        "smart.not_connected": "Die Platte ist nicht angeschlossen.",
+        "smart.alarm.failed":
+            "Die Platte selbst meldet sich als defekt. Sofort ersetzen.",
+        "smart.alarm.pending":
+            "Sektoren, die die Platte gerade nicht lesen kann. Das ist der ernsteste "
+            "Wert überhaupt — sichere, was noch geht, und ersetze die Platte",
+        "smart.alarm.uncorrectable":
+            "Sektoren, die endgültig nicht mehr lesbar waren — dort liegende Daten "
+            "sind verloren",
+        "smart.alarm.reallocated":
+            "Sektoren, die die Platte aufgegeben und ersetzt hat. Einzelne sind "
+            "normal, eine wachsende Zahl nicht",
+        "smart.alarm.crc_errors":
+            "Übertragungsfehler auf dem Weg zur Platte. Das ist nicht die Platte, "
+            "sondern Kabel, Gehäuse oder Stromversorgung",
+        "smart.alarm.hot": "Die Platte ist zu warm (°C)",
+        "smart.alarm.spare": "Die Reserveblöcke der SSD gehen zur Neige (%)",
         "demote.button": "Master aufgeben",
         "demote.help": "Diese Platte ist dann kein Master mehr",
         "demote.title": "{name} als Master aufgeben",
@@ -750,6 +790,45 @@ STRINGS: dict[str, dict[str, str]] = {
             "remove <uuid>, then --admin forget <uuid>. Switch it back on with "
             "\"allow_demote\": true in /etc/ambershelf/disks.conf.",
         "demote.switched_off": "Giving a master up is switched off on this host.",
+        "smart.column": "Health (SMART)",
+        "smart.check_all": "Check disk health",
+        "smart.note":
+            "Also fetched automatically whenever a set is mounted. Sleeping disks "
+            "are not woken up for it.",
+        "smart.never": "not checked yet",
+        "smart.unavailable": "no answer",
+        "smart.level.ok": "nothing to report",
+        "smart.level.warn": "worth a look",
+        "smart.level.danger": "serious",
+        "smart.level.unknown": "no answer",
+        "smart.hours": "{hours} hours powered on",
+        "smart.found_ok": "Every disk reports normal values.",
+        "smart.found_warn": "At least one disk reports something worth a look - see Disks.",
+        "smart.found_danger": "At least one disk reports something serious - see Disks.",
+        "smart.no_binary":
+            "smartctl is not installed. On the Docker host: sudo apt install "
+            "smartmontools. On a Mac: brew install smartmontools.",
+        "smart.unsupported":
+            "This disk does not hand out its SMART values. That is common with USB "
+            "enclosures - the chip inside does not pass the question through.",
+        "smart.unreadable": "The answer from the disk could not be read.",
+        "smart.timeout": "The disk did not answer.",
+        "smart.not_connected": "The disk is not connected.",
+        "smart.alarm.failed": "The disk reports itself as failing. Replace it now.",
+        "smart.alarm.pending":
+            "Sectors the disk currently cannot read. This is the most serious value "
+            "there is - rescue what you can and replace the disk",
+        "smart.alarm.uncorrectable":
+            "Sectors that could not be read and could not be recovered - whatever "
+            "was there is gone",
+        "smart.alarm.reallocated":
+            "Sectors the disk has given up on and replaced. A few are normal, a "
+            "growing number is not",
+        "smart.alarm.crc_errors":
+            "Transfers that arrived damaged. This is not the disk itself but the "
+            "cable, the enclosure or the power supply",
+        "smart.alarm.hot": "The disk is running too warm (°C)",
+        "smart.alarm.spare": "The SSD is running out of spare blocks (%)",
         "demote.button": "Give up master",
         "demote.help": "This disk stops being a master",
         "demote.title": "Give up {name} as a master",

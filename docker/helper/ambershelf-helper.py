@@ -99,6 +99,11 @@ REMOVABLE_MOUNT_ROOTS = ("/mnt", "/media", "/run/media")
 
 #: Filesystems the helper can create, and how. Quick formats only - a full
 #: surface write on a four terabyte disk is hours for no benefit here.
+#: Reading SMART needs root, so it belongs here rather than in the container.
+#: Only the raw answer is handed back - what the numbers mean is decided in
+#: one place, in the application.
+SMARTCTL = "/usr/sbin/smartctl"
+
 MKFS = {
     "exfat": ["/usr/sbin/mkfs.exfat", "-L", "{label}", "{device}"],
     "ntfs": ["/usr/sbin/mkfs.ntfs", "--quick", "--label", "{label}", "{device}"],
@@ -592,6 +597,9 @@ def handle(request: dict) -> dict:
         set_name = require_name(request.get("set_name"), "set_name")
         return {"ok": True, **mount_status(set_name)}
 
+    if command == "smart":
+        return handle_smart(request)
+
     if command == "volume_state":
         fs_uuid = require_uuid(request.get("fs_uuid"))
         return {"ok": True, **volume_state(fs_uuid, request.get("fs_type"))}
@@ -773,6 +781,58 @@ def handle_demote(request: dict) -> dict:
     log(f"demoted {name!r} ({fs_uuid}): registration removed and taken off the "
         f"retired list - it may be registered as a copy from now on")
     return {"ok": True, "disk": disk}
+
+
+def handle_smart(request: dict) -> dict:
+    """Ask one disk what it thinks of itself.
+
+    Read-only in every sense: it asks the disk for its own log and changes
+    nothing, not the disk and not the registry. The whole disk is asked, not
+    the partition, because SMART lives in the drive rather than in a
+    filesystem.
+    """
+    fs_uuid = require_uuid(request.get("fs_uuid"))
+    entry = next((e for e in list_block_devices()
+                  if (e["fs_uuid"] or "").upper() == fs_uuid.upper()), None)
+    if entry is None:
+        raise RuntimeError("this disk is not connected")
+    device = entry.get("parent_path") or entry["path"]
+
+    if not Path(SMARTCTL).exists():
+        return {"ok": True, "smart": {"ok": False, "reason": "smart.no_binary"}}
+
+    # A USB enclosure either answers straight away or has to be told that it
+    # is SATA underneath. Both are tried; the difference is not visible from
+    # the outside.
+    last = {"ok": False, "reason": "smart.unreadable"}
+    for arguments in ([], ["-d", "sat"]):
+        try:
+            finished = subprocess.run(
+                [SMARTCTL, "--json=c", "-a", *arguments, device],
+                capture_output=True, timeout=90)
+        except subprocess.TimeoutExpired:
+            return {"ok": True, "smart": {"ok": False, "reason": "smart.timeout"}}
+        except OSError as exc:
+            raise RuntimeError(f"smartctl could not be run: {exc}") from exc
+
+        try:
+            data = json.loads(finished.stdout.decode("utf-8", "replace") or "{}")
+        except ValueError:
+            continue
+
+        # The exit status is a bit field; the low three bits mean smartctl
+        # could not reach the device, anything above is the disk reporting.
+        status = int(data.get("smartctl", {}).get("exit_status", 0))
+        has_data = ("ata_smart_attributes" in data
+                    or "nvme_smart_health_information_log" in data)
+        if status & 0b111 or not has_data:
+            messages = data.get("smartctl", {}).get("messages", [])
+            text = "; ".join(m.get("string", "") for m in messages).strip()
+            last = {"ok": False, "reason": text or "smart.unsupported"}
+            continue
+        return {"ok": True, "smart": {"ok": True, "data": data}}
+
+    return {"ok": True, "smart": last}
 
 
 def handle_ignore(request: dict) -> dict:

@@ -145,6 +145,21 @@ hold of the password can reach it too. If that is too much, `"allow_demote": fal
 `/etc/ambershelf/disks.conf` switches it off entirely, leaving `ambershelf-helper --admin`
 on the host as the only way.
 
+### Disk health (SMART)
+
+AmberShelf asks every registered disk what it has to say about itself - on demand
+under **Disks**, and automatically whenever a set is mounted. Sleeping disks are not
+woken up for it.
+
+Only what you can act on is called out: replaced sectors, sectors it cannot read
+right now, sectors lost for good, and transfer errors - the last of those named
+explicitly as the cable, the enclosure or the power supply rather than the disk.
+Everything else is shown as a number without an opinion attached.
+
+This needs `smartmontools` (`sudo apt install smartmontools`, or `brew install
+smartmontools` on a Mac). If it is missing, or a USB enclosure refuses to pass the
+question through, the page says exactly that - never "all fine".
+
 ## Three ways to run it
 
 | | Source held read-only | Needs | Get it |

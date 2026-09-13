@@ -15,6 +15,7 @@ import socket
 from pathlib import Path
 from typing import Any
 
+from platforms import smart
 from platforms.base import BackendError, BackendUnavailable, MountReport, Volume
 
 HELPER_SOCKET = Path(os.environ.get("AMBERSHELF_HELPER_SOCKET",
@@ -114,6 +115,9 @@ class LinuxBackend:
 
     def unregister(self, fs_uuid: str) -> dict:
         return call("unregister", fs_uuid=fs_uuid)
+
+    def smart(self, fs_uuid: str) -> dict:
+        return smart.interpret(call("smart", fs_uuid=fs_uuid)["smart"])
 
     def can_demote(self) -> bool:
         try:

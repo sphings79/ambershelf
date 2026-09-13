@@ -341,6 +341,62 @@ def demotion_is_the_only_way_out_of_a_master() -> None:
           not problems, "; ".join(problems))
 
 
+def smart_values_are_judged() -> None:
+    """The numbers only help if the right ones raise their hand.
+
+    The cases are taken from real disks: a healthy one, one whose media is
+    fine but whose cable is not, and one that is losing sectors.
+    """
+    from platforms import smart
+
+    def ata(pairs: dict, passed: bool = True) -> dict:
+        return {"ok": True, "data": {
+            "smart_status": {"passed": passed},
+            "ata_smart_attributes": {"table": [
+                {"id": i, "raw": {"value": v}} for i, v in pairs.items()]},
+        }}
+
+    healthy = {5: 0, 9: 1308, 194: 37, 197: 0, 198: 0, 199: 0}
+    cable = {5: 0, 9: 16876, 194: 39, 197: 0, 198: 0, 199: 1}
+    dying = {5: 24, 9: 40000, 194: 58, 197: 8, 198: 3, 199: 0}
+
+    def keys(report):
+        return {a["key"] for a in report["alarms"]}
+
+    problems = []
+    report = smart.interpret(ata(healthy))
+    if report["alarms"]:
+        problems.append(f"a healthy disk raised {keys(report)}")
+    if report["readings"].get("power_on_hours") != 1308:
+        problems.append("power-on hours were not read")
+
+    report = smart.interpret(ata(cable))
+    if keys(report) != {"smart.alarm.crc_errors"}:
+        problems.append(f"the cable case gave {keys(report)}")
+    if any(a["level"] == "danger" for a in report["alarms"]):
+        problems.append("a transfer error was called serious")
+
+    report = smart.interpret(ata(dying))
+    expected = {"smart.alarm.pending", "smart.alarm.uncorrectable",
+                "smart.alarm.reallocated", "smart.alarm.hot"}
+    if keys(report) != expected:
+        problems.append(f"the failing case gave {keys(report)}")
+    if not any(a["level"] == "danger" for a in report["alarms"]):
+        problems.append("unreadable sectors were not called serious")
+
+    report = smart.interpret(ata(healthy, passed=False))
+    if "smart.alarm.failed" not in keys(report):
+        problems.append("a disk declaring itself failed was not reported")
+
+    # No answer is a state of its own, never silently "fine".
+    report = smart.interpret({"ok": False, "reason": "smart.unsupported"})
+    if report["available"] or report["reason"] != "smart.unsupported":
+        problems.append("a disk that cannot be asked was not reported as such")
+
+    check("SMART values are judged the way the disks meant them",
+          not problems, "; ".join(problems[:3]))
+
+
 def names_are_only_as_restricted_as_a_path() -> None:
     """A disk name becomes a folder - that is the only reason to restrict it.
 
@@ -439,6 +495,7 @@ def main() -> int:
     authentication_holds()
     system_partitions_are_recognised()
     demotion_is_the_only_way_out_of_a_master()
+    smart_values_are_judged()
     names_are_only_as_restricted_as_a_path()
     translations_match()
     templates_have_their_keys()

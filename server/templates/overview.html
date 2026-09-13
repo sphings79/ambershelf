@@ -95,6 +95,13 @@
             <span class="chip">{{ t('overview.not_mounted') }}</span>
           {% endif %}
 
+          {% set sm = smart.get(d.id) %}
+          {% if sm and sm.available and sm.level != 'ok' %}
+            <a class="chip {{ sm.level }}" href="/disks"
+               title="{% for a in sm.alarms %}{{ t(a.key) }}{% if not loop.last %} · {% endif %}{% endfor %}">
+              {{ ui.icon('alert', 12) }} {{ t('smart.level.' ~ sm.level) }}</a>
+          {% endif %}
+
           {% if d.scan.files and not d.scan.unhashed %}
             <span class="chip ok">{{ ui.icon('check', 12) }} {{ t('overview.index_complete') }}</span>
           {% elif d.scan.unhashed %}

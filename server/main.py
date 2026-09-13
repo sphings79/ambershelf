@@ -23,7 +23,7 @@ from engine import apply as apply_engine
 from engine import auth, paths
 from engine import compare, config, db, fsutil, notify, planner, scanner
 from engine.jobs import manager
-from platforms import BackendError, backend
+from platforms import BackendError, backend, smart
 from server import i18n
 
 # Bundled into a single executable the templates live somewhere else, so the
@@ -372,6 +372,7 @@ def overview(request: Request):
     for row in db.all_sets():
         sets.append(set_state(row["name"]))
     return render("overview.html", request, sets=sets,
+                  smart=db.smart_reports(),
                   msg=request.query_params.get("msg"),
                   level=request.query_params.get("level", "info"))
 
@@ -430,6 +431,30 @@ def set_state(set_name: str) -> dict:
 
 # ------------------------------------------------------------------- disks --
 
+def read_smart(disk) -> dict:
+    """Ask one disk about its health and keep the answer.
+
+    Every failure ends up as a stored report too. A disk that cannot be
+    asked is worth showing as exactly that, and it stops the interface from
+    asking again on every page view.
+    """
+    try:
+        report = backend.smart(disk["fs_uuid"])
+    except BackendError as exc:
+        report = smart.interpret({"ok": False, "reason": str(exc)})
+    level = db.store_smart(disk["id"], report)
+    report["level"] = level
+    if level == "danger":
+        db.log_event("error", f"{disk['display_name']}: "
+                     + ", ".join(f"{a['key']} {a['count']}" for a in report["alarms"]),
+                     disk["set_name"], "smart")
+    elif level == "warn":
+        db.log_event("warning", f"{disk['display_name']}: "
+                     + ", ".join(f"{a['key']} {a['count']}" for a in report["alarms"]),
+                     disk["set_name"], "smart")
+    return report
+
+
 @app.get("/disks", response_class=HTMLResponse)
 def disks_page(request: Request):
     refresh_registrations()
@@ -476,6 +501,7 @@ def disks_page(request: Request):
                       (request.query_params.get("demote") or "").strip()),
                   password_set=auth.password_is_set(),
                   can_demote=backend.can_demote(),
+                  smart=db.smart_reports(),
                   sets_in_use=sorted({row["set_name"] for row in registered}),
                   indexed={row["id"]: scanner.scan_state(row["id"])["files"]
                            for row in registered},
@@ -595,6 +621,29 @@ async def demote_master(request: Request):
     return flash(request, "/disks", "demote.done", "ok")
 
 
+@app.post("/disks/smart")
+def check_smart(request: Request, fs_uuid: str = Form("")):
+    """Ask one disk, or every registered one, how it is doing."""
+    fs_uuid = fs_uuid.strip()
+    disks = ([db.disk_by_uuid(fs_uuid)] if fs_uuid
+             else db.query("SELECT * FROM disks ORDER BY set_name, role DESC"))
+    disks = [disk for disk in disks if disk is not None]
+    if not disks:
+        return flash(request, "/disks", "forget.unknown", "error")
+
+    worst = "ok"
+    for disk in disks:
+        report = read_smart(disk)
+        level = report.get("level", "unknown")
+        if level == "danger" or worst == "ok":
+            worst = level
+    if worst == "danger":
+        return flash(request, "/disks", "smart.found_danger", "error")
+    if worst in ("warn", "unknown"):
+        return flash(request, "/disks", "smart.found_warn", "warn")
+    return flash(request, "/disks", "smart.found_ok", "ok")
+
+
 @app.post("/disks/ignore")
 def ignore_disk(request: Request, fs_uuid: str = Form(...)):
     """Put a disk out of reach: never listed, registered or mounted."""
@@ -675,6 +724,17 @@ def mount_set(request: Request, set_name: str):
         if missing:
             message += f", not connected: {missing}"
         db.log_event("info", message, set_name, "mount")
+
+        # A disk that has just been woken up is the cheapest moment to ask
+        # it how it is doing, and the most useful one - right before it is
+        # read from or written to.
+        alarms = 0
+        for disk in db.disks_of_set(set_name):
+            if any(entry.get("fs_uuid") == disk["fs_uuid"] for entry in result.attached):
+                if read_smart(disk)["alarms"]:
+                    alarms += 1
+        if alarms:
+            return flash(request, "/", "smart.found_warn", "warn")
         return flash(request, "/", message, "ok")
     except BackendError as exc:
         db.log_event("error", str(exc), set_name, "mount")

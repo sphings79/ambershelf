@@ -7,6 +7,7 @@ interface.
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 from datetime import datetime, timezone
@@ -204,6 +205,15 @@ CREATE TABLE IF NOT EXISTS sessions (
     address      TEXT,
     user_agent   TEXT
 ) WITHOUT ROWID;
+
+-- The last thing a disk said about its own health. Kept so the page can
+-- show it without spinning up a sleeping disk to ask again.
+CREATE TABLE IF NOT EXISTS smart (
+    disk_id    INTEGER PRIMARY KEY REFERENCES disks(id) ON DELETE CASCADE,
+    checked_at TEXT NOT NULL,
+    level      TEXT NOT NULL,        -- ok, warn, danger, unknown
+    report     TEXT NOT NULL         -- the interpreted report, as JSON
+);
 
 CREATE TABLE IF NOT EXISTS settings (
     k TEXT PRIMARY KEY,
@@ -523,6 +533,7 @@ def forget_disk(disk_id: int) -> dict:
         ("synced", "slave_disk_id = ?", (disk_id,)),
         ("decisions", "disk_id = ?", (disk_id,)),
         ("findings", "disk_id = ?", (disk_id,)),
+        ("smart", "disk_id = ?", (disk_id,)),
         ("scans", "disk_id = ?", (disk_id,)),
         ("files", "disk_id = ?", (disk_id,)),
         ("disks", "id = ?", (disk_id,)),
@@ -531,6 +542,42 @@ def forget_disk(disk_id: int) -> dict:
         if count:
             removed[table] = count
     return removed
+
+
+def store_smart(disk_id: int, report: dict) -> str:
+    """Keep the latest report, and say at which level it lands."""
+    if not report.get("available"):
+        level = "unknown"
+    elif any(a["level"] == "danger" for a in report.get("alarms", [])):
+        level = "danger"
+    elif report.get("alarms"):
+        level = "warn"
+    else:
+        level = "ok"
+    execute("INSERT INTO smart (disk_id, checked_at, level, report) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT (disk_id) DO UPDATE SET checked_at = excluded.checked_at, "
+            "level = excluded.level, report = excluded.report",
+            (disk_id, report.get("checked_at") or now(), level, json.dumps(report)))
+    return level
+
+
+def smart_reports() -> dict[int, dict]:
+    """Every stored report, by disk, ready for a template."""
+    result = {}
+    for row in query("SELECT * FROM smart"):
+        try:
+            report = json.loads(row["report"])
+        except ValueError:
+            continue
+        # A report written by an older version may not have the shape the
+        # page expects. It is only a cache of the last answer, so it is
+        # dropped rather than migrated - the next check writes a fresh one.
+        if report.get("available") and "readings" not in report:
+            continue
+        report["level"] = row["level"]
+        report["checked_at"] = row["checked_at"]
+        result[row["disk_id"]] = report
+    return result
 
 
 def forget_set(set_name: str) -> dict:
