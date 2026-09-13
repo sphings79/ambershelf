@@ -272,6 +272,41 @@ def system_partitions_are_recognised() -> None:
           not wrong, "; ".join(wrong[:3]))
 
 
+def names_are_only_as_restricted_as_a_path() -> None:
+    """A disk name becomes a folder - that is the only reason to restrict it.
+
+    Real archives are called "! Fotos !" and live on a disk somebody named
+    "Größe". A tool that refuses those makes its user work around it.
+    """
+    helper = load(ROOT / "docker" / "helper" / "ambershelf-helper.py")
+
+    allowed = ["Fotoarchiv", "Kopie 1", "Größe", "Müller", "Fotos & Videos",
+               "4 TB (extern)", "! Fotos !", "Fotos+Videos", "Kopie #1",
+               "Sicherung!", "2019-2024", "a"]
+    refused = ["Archiv/2019", "back\\slash", ".", "..", "", "   ", "x" * 64,
+               "with\ttab", "with\nnewline"]
+
+    wrong = []
+    for name in allowed:
+        try:
+            helper.require_name(name, "name")
+        except Exception as exc:                              # noqa: BLE001
+            wrong.append(f"{name!r} refused: {exc}")
+    for name in refused:
+        try:
+            helper.require_name(name, "name")
+            wrong.append(f"{name!r} was accepted")
+        except Exception:                                     # noqa: BLE001,S110
+            pass
+
+    # Surrounding spaces are trimmed rather than refused.
+    if helper.require_name("  Fotoarchiv  ", "name") != "Fotoarchiv":
+        wrong.append("surrounding spaces were not trimmed")
+
+    check(f"names allow everything a folder can hold ({len(allowed)} yes, "
+          f"{len(refused)} no)", not wrong, "; ".join(wrong[:3]))
+
+
 def imports_resolve() -> None:
     sys.path.insert(0, str(ROOT))
     try:
@@ -334,6 +369,7 @@ def main() -> int:
     integrity_recognises_files()
     authentication_holds()
     system_partitions_are_recognised()
+    names_are_only_as_restricted_as_a_path()
     translations_match()
     templates_have_their_keys()
     engine_stays_platform_blind()

@@ -84,7 +84,14 @@ def is_system_partition(entry: dict) -> bool:
     if mountpoint:
         return not mountpoint.startswith(REMOVABLE_MOUNT_ROOTS)
     return False
-NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$")
+#: A name becomes a folder under /mnt/ambershelf, so it may not contain a
+#: path separator or anything a filesystem cannot hold. Everything else is
+#: allowed - umlauts, brackets, exclamation marks. Real archives are called
+#: things like "! Fotos !" and "Größe", and a tool that refuses those is
+#: making the user work around it for no reason.
+FORBIDDEN_IN_NAME = {"/", "\\", "\0"} | {chr(code) for code in range(32)}
+MAX_NAME_LENGTH = 63
+
 UUID_RE = re.compile(r"^[A-Za-z0-9-]{4,40}$")
 
 MAX_REQUEST = 64 * 1024
@@ -458,9 +465,25 @@ def handle(request: dict) -> dict:
 
 
 def require_name(value, field: str) -> str:
-    if not isinstance(value, str) or not NAME_RE.match(value):
-        raise RuntimeError(f"invalid {field}")
-    return value
+    """Check a name that is going to be a folder, and say what is wrong."""
+    if not isinstance(value, str):
+        raise RuntimeError(f"{field} is missing")
+    name = value.strip()
+    if not name:
+        raise RuntimeError(f"{field} must not be empty")
+    if len(name) > MAX_NAME_LENGTH:
+        raise RuntimeError(
+            f"{field} is {len(name)} characters, the limit is {MAX_NAME_LENGTH}")
+    offending = sorted({character for character in name
+                        if character in FORBIDDEN_IN_NAME})
+    if offending:
+        shown = " ".join("a slash" if c == "/" else
+                         "a backslash" if c == "\\" else
+                         "a control character" for c in offending)
+        raise RuntimeError(f"{field} must not contain {shown}")
+    if name in (".", ".."):
+        raise RuntimeError(f"{field} must not be {name!r}")
+    return name
 
 
 def require_uuid(value) -> str:
@@ -481,8 +504,8 @@ def handle_register(request: dict) -> dict:
     role = request.get("role")
     if role not in VALID_ROLES:
         raise RuntimeError("role must be master or slave")
-    set_name = require_name(request.get("set_name"), "set_name")
-    display_name = require_name(request.get("display_name"), "display_name")
+    set_name = require_name(request.get("set_name"), "the set name")
+    display_name = require_name(request.get("display_name"), "the disk name")
 
     config = load_config()
     existing = find_disk(config, fs_uuid)

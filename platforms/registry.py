@@ -14,14 +14,32 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 
 from engine.paths import app_data_dir
 
-NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$")
+#: Same rule as the host helper: a name becomes a folder, so only a path
+#: separator and the unprintable characters are out.
+FORBIDDEN_IN_NAME = {"/", "\\", "\0"} | {chr(code) for code in range(32)}
+MAX_NAME_LENGTH = 63
 VALID_ROLES = ("master", "slave")
+
+
+def clean_name(value: str, field: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{field} is missing")
+    name = value.strip()
+    if not name:
+        raise ValueError(f"{field} must not be empty")
+    if len(name) > MAX_NAME_LENGTH:
+        raise ValueError(
+            f"{field} is {len(name)} characters, the limit is {MAX_NAME_LENGTH}")
+    if any(character in FORBIDDEN_IN_NAME for character in name):
+        raise ValueError(f"{field} must not contain a slash or a control character")
+    if name in (".", ".."):
+        raise ValueError(f"{field} must not be {name!r}")
+    return name
 
 
 class JsonRegistry:
@@ -62,8 +80,8 @@ class JsonRegistry:
                  volume=None) -> dict:
         if role not in VALID_ROLES:
             raise ValueError("role must be master or slave")
-        if not NAME_RE.match(set_name) or not NAME_RE.match(display_name):
-            raise ValueError("invalid name")
+        set_name = clean_name(set_name, "the set name")
+        display_name = clean_name(display_name, "the disk name")
 
         data = self.load()
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
