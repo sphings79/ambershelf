@@ -544,6 +544,51 @@ def forget_disk(disk_id: int) -> dict:
     return removed
 
 
+RULES_VERSION_KEY = "integrity_rules_version"
+
+#: Findings that come from looking inside a file, and are therefore only as
+#: good as the signature table. Name-based ones are not affected.
+CONTENT_FINDINGS = ("header_mismatch", "text_garbled", "empty")
+
+
+def forget_verdicts_on_new_rules(version: int) -> int:
+    """Throw away every integrity verdict when the rules behind it changed.
+
+    Without this a corrected signature only ever helps files indexed after
+    the correction, and the wrong verdicts on everything else stay on the
+    page for good.
+    """
+    if get_setting(RULES_VERSION_KEY, "0") == str(version):
+        return 0
+    affected = execute("UPDATE files SET health = NULL WHERE health IS NOT NULL").rowcount
+    marks = ", ".join("?" * len(CONTENT_FINDINGS))
+    execute(f"DELETE FROM findings WHERE kind IN ({marks})", CONTENT_FINDINGS)
+    set_setting(RULES_VERSION_KEY, str(version))
+    return affected
+
+
+def close_interrupted() -> dict[str, int]:
+    """Finish anything that was still marked as running.
+
+    A job only lives in the process that started it. If that process is gone
+    - a container restart, a crash, a host that lost power - the row it left
+    behind says "running" and will say so forever, which is worse than
+    useless: it is the one state that means "wait, this is still working".
+    Nothing can be resumed from here, so it is closed and said so.
+    """
+    closed: dict[str, int] = {}
+    stamp = now()
+    for table, extra in (("runs", ""), ("scans", ", phase = 'interrupted'")):
+        count = execute(
+            f"UPDATE {table} SET state = 'interrupted', finished_at = ?, "
+            f"message = ?{extra} WHERE state IN ('running', 'paused', 'queued')",
+            (stamp, "interrupted - AmberShelf was restarted while this was running"),
+        ).rowcount
+        if count:
+            closed[table] = count
+    return closed
+
+
 def store_smart(disk_id: int, report: dict) -> str:
     """Keep the latest report, and say at which level it lands."""
     if not report.get("available"):

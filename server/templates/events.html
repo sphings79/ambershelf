@@ -91,7 +91,8 @@
       {% for s in scans %}
         <tr>
           <td><strong>{{ s.display_name }}</strong></td>
-          <td><span class="chip {{ 'ok' if s.state == 'done' else 'warn' }}">{{ s.state }}</span></td>
+          <td><span class="chip {{ 'ok' if s.state == 'done' else 'warn' }}">
+            {{ t('run.state.' ~ s.state) }}</span></td>
           <td class="num">{{ s.files_total|thousands }}</td>
           <td class="num">{{ s.bytes_total|bytes }}</td>
           <td class="small muted">{{ s.finished_at|dt }}</td>

@@ -21,7 +21,7 @@ from fastapi.templating import Jinja2Templates
 
 from engine import apply as apply_engine
 from engine import auth, paths
-from engine import compare, config, db, fsutil, notify, planner, scanner
+from engine import compare, config, db, fsutil, integrity, notify, planner, scanner
 from engine.jobs import manager
 from platforms import BackendError, backend, smart
 from server import i18n
@@ -33,6 +33,21 @@ BASE_DIR = paths.resource_dir() / "server"
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     db.initialise()
+
+    # A job cannot outlive the process that ran it, so anything still marked
+    # as running belongs to a process that is gone. Left alone it would sit
+    # in the interface claiming to be at work.
+    stale = db.close_interrupted()
+    if stale:
+        db.log_event("warning", "left over from the last start, closed: "
+                     + ", ".join(f"{k} {v}" for k, v in stale.items()), None, "app")
+
+    dropped = db.forget_verdicts_on_new_rules(integrity.RULES_VERSION)
+    if dropped:
+        db.log_event("warning", f"the integrity rules changed - {dropped:,} verdict(s) "
+                     "dropped, index the disks again to have them judged afresh",
+                     None, "scan")
+
     refresh_registrations()
     db.log_event("info", "AmberShelf started", None, "app")
 

@@ -40,6 +40,13 @@ EMPTY = "empty"
 UNREADABLE = "unreadable"
 
 #: (offset, magic) pairs. A file passes if any pair matches.
+#: Bumped whenever a signature changes. A verdict is only as good as the
+#: table it was made against, so when this number moves, every verdict
+#: already stored is thrown away and made again. Re-reading half a kilobyte
+#: per file is cheap; leaving 709 holiday videos marked as damaged because
+#: the table was wrong is not.
+RULES_VERSION = 2
+
 SIGNATURES: dict[str, tuple[tuple[int, bytes], ...]] = {
     "jpg":  ((0, b"\xff\xd8\xff"),),
     "jpeg": ((0, b"\xff\xd8\xff"),),
@@ -74,7 +81,13 @@ SIGNATURES: dict[str, tuple[tuple[int, bytes], ...]] = {
     "wav":  ((0, b"RIFF"),),
     "mkv":  ((0, b"\x1a\x45\xdf\xa3"),),
     "webm": ((0, b"\x1a\x45\xdf\xa3"),),
-    "mts":  ((0, b"\x47"), (0, b"\x00\x00\x01")),
+    # A transport stream is a chain of 188-byte packets, each starting with
+    # 0x47. Camcorders writing AVCHD put a four-byte arrival timestamp in
+    # front of every packet, so on those files the first 0x47 sits at four,
+    # not at zero. Both are ordinary and both belong here.
+    "mts":  ((0, b"\x47"), (4, b"\x47"), (0, b"\x00\x00\x01")),
+    "m2ts": ((0, b"\x47"), (4, b"\x47"), (0, b"\x00\x00\x01")),
+    "ts":   ((0, b"\x47"), (4, b"\x47"), (0, b"\x00\x00\x01")),
     "mp3":  ((0, b"ID3"), (0, b"\xff\xfb"), (0, b"\xff\xf3"), (0, b"\xff\xf2"),
              (0, b"\xff\xfa"), (0, b"\xff\xe3")),
     "flac": ((0, b"fLaC"),),

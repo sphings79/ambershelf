@@ -125,6 +125,13 @@ def integrity_recognises_files() -> None:
         ("clip.mp4", b"\x00\x00\x00\x18ftypmp42", "ok"),
         ("clip.mp4", b"Salted__\x8a\x1f\x00\x00\x00\x00", "header_mismatch"),
         ("alt.mov", b"\x00\x00\x00\x14moov\x00\x00", "ok"),
+        # AVCHD camcorders put a four-byte timestamp in front of every
+        # packet, so the 0x47 sync byte sits at four. 709 perfectly good
+        # holiday videos were called damaged over this.
+        ("20090422.MTS", b"\x00\x00\x00\x00\x47\x40\x00\x10\x00\x00\xb0\x11", "ok"),
+        ("plain.mts", b"\x47\x40\x00\x10\x00\x00\xb0\x11\x00\x00\x00\x00", "ok"),
+        ("clip.m2ts", b"\x00\x00\x00\x60\x47\x40\x00\x10\x00\x00\xb0\x11", "ok"),
+        ("fake.mts", b"Salted__\x8a\x1f\x00\x00\x00\x00", "header_mismatch"),
         ("scan.pdf", b"%PDF-1.7\n%\xe2\xe3", "ok"),
         ("bild.png", b"\x89PNG\r\n\x1a\n\x00\x00", "ok"),
         ("raw.cr2", b"II*\x00\x10\x00\x00\x00CR", "ok"),
@@ -341,6 +348,101 @@ def demotion_is_the_only_way_out_of_a_master() -> None:
           not problems, "; ".join(problems))
 
 
+def a_restart_closes_what_it_interrupted() -> None:
+    """Nothing may keep claiming to be running after the process is gone.
+
+    "running" is the one state that tells a user to wait, so a row left in
+    it by a crash or a restart is worse than a wrong number.
+    """
+    from engine import db
+
+    db.initialise()
+    # This check owns these two tables for its duration.
+    for table in ("run_items", "runs", "scans", "files"):
+        db.execute(f"DELETE FROM {table}")
+    db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-ONLY'")
+    disk_id = db.execute(
+        "INSERT INTO disks (fs_uuid, set_name, role, display_name, size_bytes, "
+        "registered_at) VALUES ('CHECK-ONLY', 'checks', 'master', 'M', 0, ?)",
+        ("2026-01-01T00:00:00+00:00",)).lastrowid
+
+    for state in ("running", "paused", "queued", "done"):
+        db.execute("INSERT INTO runs (set_name, started_at, state) VALUES (?, ?, ?)",
+                   ("checks", "2026-01-01T00:00:00+00:00", state))
+        db.execute("INSERT INTO scans (disk_id, set_name, started_at, state) "
+                   "VALUES (?, ?, ?, ?)",
+                   (disk_id, "checks", "2026-01-01T00:00:00+00:00", state))
+
+    closed = db.close_interrupted()
+    problems = []
+    if closed.get("runs") != 3 or closed.get("scans") != 3:
+        problems.append(f"closed {closed}, expected three of each")
+
+    for table in ("runs", "scans"):
+        left = db.scalar(f"SELECT COUNT(*) FROM {table} WHERE state IN "
+                         "('running', 'paused', 'queued')", (), 0)
+        if left:
+            problems.append(f"{left} row(s) in {table} still claim to be running")
+        if db.scalar(f"SELECT COUNT(*) FROM {table} WHERE state = 'done'", (), 0) != 1:
+            problems.append(f"a finished {table} row was touched")
+        if db.scalar(f"SELECT COUNT(*) FROM {table} WHERE state = 'interrupted' "
+                     "AND finished_at IS NULL", (), 0):
+            problems.append(f"an interrupted {table} row has no end time")
+
+    # Doing it twice has to be as harmless as doing it once.
+    if db.close_interrupted():
+        problems.append("a second pass found something to close")
+
+    for table in ("run_items", "runs", "scans", "files"):
+        db.execute(f"DELETE FROM {table}")
+    db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-ONLY'")
+
+    check("a restart closes what it interrupted", not problems, "; ".join(problems[:3]))
+
+
+def corrected_rules_drop_their_verdicts() -> None:
+    """A corrected signature has to reach the files already judged by the old one."""
+    from engine import db
+
+    db.initialise()
+    db.execute("DELETE FROM findings WHERE set_name = 'checks'")
+    db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-ONLY'")
+    disk_id = db.execute(
+        "INSERT INTO disks (fs_uuid, set_name, role, display_name, size_bytes, "
+        "registered_at) VALUES ('CHECK-ONLY', 'checks', 'master', 'M', 0, ?)",
+        ("2026-01-01T00:00:00+00:00",)).lastrowid
+    for path, health in (("a.mts", "header_mismatch"), ("b.jpg", "ok"),
+                         ("c.txt", "text_garbled")):
+        db.execute("INSERT INTO files (disk_id, path, size, mtime, health) "
+                   "VALUES (?, ?, 1, 0, ?)", (disk_id, path, health))
+    for kind in ("header_mismatch", "ransom_note"):
+        db.record_finding("checks", kind, "a.mts", disk_id, None)
+
+    db.set_setting(db.RULES_VERSION_KEY, "1")
+    problems = []
+    if db.forget_verdicts_on_new_rules(2) != 3:
+        problems.append("not every verdict was dropped")
+    if db.scalar("SELECT COUNT(*) FROM files WHERE disk_id = ? AND health IS NOT NULL",
+                 (disk_id,), 0):
+        problems.append("a verdict survived the rule change")
+    kinds = {r["kind"] for r in db.query(
+        "SELECT kind FROM findings WHERE set_name = 'checks'")}
+    if "header_mismatch" in kinds:
+        problems.append("a finding from the old rules is still there")
+    if "ransom_note" not in kinds:
+        # That one comes from the file's name, which the rules never touched.
+        problems.append("a name-based finding was thrown away with the rest")
+    if db.forget_verdicts_on_new_rules(2) != 0:
+        problems.append("the same version dropped verdicts a second time")
+
+    db.execute("DELETE FROM findings WHERE set_name = 'checks'")
+    db.execute("DELETE FROM files WHERE disk_id = ?", (disk_id,))
+    db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-ONLY'")
+
+    check("a corrected signature reaches the files already judged",
+          not problems, "; ".join(problems[:3]))
+
+
 def smart_values_are_judged() -> None:
     """The numbers only help if the right ones raise their hand.
 
@@ -496,6 +598,8 @@ def main() -> int:
     system_partitions_are_recognised()
     demotion_is_the_only_way_out_of_a_master()
     smart_values_are_judged()
+    a_restart_closes_what_it_interrupted()
+    corrected_rules_drop_their_verdicts()
     names_are_only_as_restricted_as_a_path()
     translations_match()
     templates_have_their_keys()
