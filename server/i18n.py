@@ -94,6 +94,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.state": "Zustand",
         "disks.connected": "angeschlossen",
         "disks.not_connected": "nicht angeschlossen",
+        "disks.mounted": "eingehängt",
+        "disks.busy_help":
+            "Eingehängt — erst aushängen, dann abziehen. Diese Platte hat AmberShelf "
+            "nicht eingehängt, das war der Rechner selbst.",
         "disks.mounted_ro": "eingehängt, nur lesend",
         "disks.mounted_rw": "eingehängt, schreibend",
         "disks.not_mounted": "nicht eingehängt",
@@ -653,6 +657,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.state": "State",
         "disks.connected": "connected",
         "disks.not_connected": "not connected",
+        "disks.mounted": "mounted",
+        "disks.busy_help":
+            "Mounted - unmount it before unplugging. AmberShelf did not mount this "
+            "one, the machine itself did.",
         "disks.mounted_ro": "mounted, read-only",
         "disks.mounted_rw": "mounted, writable",
         "disks.not_mounted": "not mounted",

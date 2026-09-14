@@ -522,6 +522,13 @@ def disks_page(request: Request):
     except BackendError:
         excluded = []
 
+    # An excluded disk is listed from the registry, which knows nothing about
+    # what is plugged in right now. The live listing does, so the two are
+    # joined here rather than in the template.
+    attached = {(volume["fs_uuid"] or "").upper():
+                {"connected": True, "mounted": bool(volume["mountpoint"])}
+                for volume in volumes if volume["fs_uuid"]}
+
     # Looking inside the disk about to be erased is a better warning than any
     # wording, so it is fetched only for the one being confirmed.
     formatting = request.query_params.get("format")
@@ -573,7 +580,7 @@ def disks_page(request: Request):
                   can_demote=backend.can_demote(),
                   smart=db.smart_reports(),
                   sets_in_use=sorted({row["set_name"] for row in registered}),
-                  live=live, mounted_sets=sorted(mounted_sets),
+                  live=live, mounted_sets=sorted(mounted_sets), attached=attached,
                   indexed={row["id"]: scanner.scan_state(row["id"])["files"]
                            for row in registered})
 

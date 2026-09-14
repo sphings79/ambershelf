@@ -1,5 +1,20 @@
 {% extends "base.html" %}
 {% import "_icons.html" as ui %}
+
+{# One badge, three tables. What somebody at the machine wants to know is
+   whether they may pull the plug, so that is what it says; the technical
+   state is the tooltip. #}
+{% macro plug_state(connected, mounted) %}
+  {% if not connected %}
+    <span class="chip">{{ ui.icon('plug', 12) }} {{ t('disks.not_connected') }}</span>
+  {% elif mounted %}
+    <span class="chip warn" title="{{ t('disks.busy_help') }}">
+      {{ ui.icon('mount', 12) }} {{ t('disks.mounted') }}</span>
+  {% else %}
+    <span class="chip ok" title="{{ t('disks.not_mounted') }}">
+      {{ ui.icon('eject', 12) }} {{ t('disks.safe_to_unplug') }}</span>
+  {% endif %}
+{% endmacro %}
 {% block title %}{{ t('disks.title') }}{% endblock %}
 {% block content %}
 
@@ -61,6 +76,7 @@
             <th>{{ t('disks.fstype') }}</th>
             <th class="num">{{ t('common.size') }}</th>
             <th>{{ t('disks.uuid') }}</th>
+            <th>{{ t('disks.state') }}</th>
             <th>{{ t('disks.register') }}</th>
             <th></th>
           </tr>
@@ -87,6 +103,7 @@
               <div class="mono id small">{{ d.fs_uuid or '—' }}</div>
               <div class="faint small mono id">{{ d.serial or '' }}</div>
             </td>
+            <td>{{ plug_state(true, d.mountpoint) }}</td>
             <td>
               {% if not d.usable %}
                 <span class="chip warn">{{ ui.icon('alert', 12) }}
@@ -137,7 +154,7 @@
           </tr>
           {% if claiming == d.token %}
           <tr class="format-row">
-            <td colspan="6">
+            <td colspan="7">
               <form method="post" action="/disks/register">
                 <input type="hidden" name="fs_uuid" value="{{ d.fs_uuid }}">
                 <input type="hidden" name="token" value="{{ d.token }}">
@@ -174,7 +191,7 @@
 
           {% if formatting == d.token %}
           <tr class="format-row">
-            <td colspan="6">
+            <td colspan="7">
               <form class="format-confirm" method="post" action="/disks/format">
                 <input type="hidden" name="token" value="{{ d.token }}">
                 <input type="hidden" name="device" value="{{ d.path }}">
@@ -383,15 +400,14 @@
                   <span class="chip">{{ ui.icon('plug', 12) }} {{ t('disks.not_connected') }}</span>
                 {% endif %}
 
+                {# Registered disks say more: whether the kernel is holding
+                   this one read-only is the whole point of the program. #}
                 {% if not l.connected %}
                 {% elif l.mounted and l.read_only %}
                   <span class="chip ok">{{ ui.icon('lock', 12) }} {{ t('disks.mounted_ro') }}</span>
                 {% elif l.mounted %}
                   <span class="chip warn">{{ ui.icon('unlock', 12) }} {{ t('disks.mounted_rw') }}</span>
                 {% else %}
-                  {# "not mounted" is the fact; what somebody standing at the
-                     machine wants to know is whether they may pull the plug.
-                     So that is what the badge says. #}
                   <span class="chip ok" title="{{ t('disks.not_mounted') }}">
                     {{ ui.icon('eject', 12) }} {{ t('disks.safe_to_unplug') }}</span>
                 {% endif %}
@@ -465,16 +481,19 @@
           <th>{{ t('disks.fstype') }}</th>
           <th class="num">{{ t('common.size') }}</th>
           <th>{{ t('disks.uuid') }}</th>
+          <th>{{ t('disks.state') }}</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
       {% for e in excluded %}
+        {% set a = attached.get((e.fs_uuid or '')|upper, {}) %}
         <tr>
           <td><strong>{{ e.label or '—' }}</strong></td>
           <td class="small">{{ e.fs_type or '—' }}</td>
           <td class="num">{{ e.size|bytes }}</td>
           <td class="id-cell"><span class="mono id small">{{ e.fs_uuid }}</span></td>
+          <td>{{ plug_state(a.connected, a.mounted) }}</td>
           <td class="right">
             <form class="inline" method="post" action="/disks/unignore">
               <input type="hidden" name="fs_uuid" value="{{ e.fs_uuid }}">
