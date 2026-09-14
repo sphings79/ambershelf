@@ -451,6 +451,14 @@ tr.row-uncovered td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
 .note strong { display: block; margin-bottom: 2px; }
 .note p { margin: 3px 0 0; color: var(--text-muted); font-size: 13px; }
 .note ul { margin: 5px 0 0; padding-left: 18px; color: var(--text-muted); font-size: 13px; }
+.flash { position: relative; padding-right: 40px; }
+.flash-close {
+  position: absolute; top: 8px; right: 8px;
+  background: none; border: 0; padding: 4px; line-height: 0; cursor: pointer;
+  color: var(--text-faint); border-radius: var(--radius-sm);
+}
+.flash-close:hover { color: var(--text); background: var(--surface-2); }
+
 .note.ok { background: var(--ok-soft); border-color: transparent; }
 .note.ok .note-icon { color: var(--ok); }
 .note.warn { background: var(--warn-soft); border-color: transparent; }

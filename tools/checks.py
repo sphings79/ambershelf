@@ -418,6 +418,65 @@ def a_restart_closes_what_it_interrupted() -> None:
     check("a restart closes what it interrupted", not problems, "; ".join(problems[:3]))
 
 
+def a_message_is_shown_once_and_then_gone() -> None:
+    """A message belongs to one page view, not to a URL.
+
+    In a query parameter it came back on every reload as if it had just
+    happened, and it put disk names and paths into the browser history and
+    every proxy log on the way.
+    """
+    sys.path.insert(0, str(ROOT))
+    try:
+        from server import main
+    except ImportError:
+        notes.append("fastapi is missing - the message check was skipped")
+        return
+
+    class Request:
+        def __init__(self, cookies=None):
+            self.cookies = cookies or {}
+            self.headers = {}
+            self.url = type("U", (), {"scheme": "http"})()
+
+    problems = []
+    response = main.flash(Request(), "/disks", "forget.done", "ok")
+
+    if response.headers.get("location") != "/disks":
+        problems.append(f"the address carries the message: "
+                        f"{response.headers.get('location')}")
+    cookie = response.headers.get("set-cookie", "")
+    lowered = cookie.lower()
+    if main.FLASH_COOKIE not in cookie:
+        problems.append("no handle was handed out")
+    if "httponly" not in lowered or "samesite=lax" not in lowered:
+        problems.append(f"the handle is not protected: {cookie}")
+    if "forget.done" in cookie:
+        problems.append("the message itself is in the cookie")
+
+    handle = cookie.split("=", 1)[1].split(";", 1)[0]
+    first = main.take_flash(Request({main.FLASH_COOKIE: handle}))
+    if first != ("forget.done", "ok"):
+        problems.append(f"the message did not arrive: {first}")
+    second = main.take_flash(Request({main.FLASH_COOKIE: handle}))
+    if second != (None, "info"):
+        problems.append(f"the message came a second time: {second}")
+    if main.take_flash(Request()) != (None, "info"):
+        problems.append("a reader without a handle was given a message")
+
+    # Nothing may pile up: a handle nobody ever redeems has to age out.
+    main.flash(Request(), "/", "never.read", "ok")
+    with main._flash_lock:
+        for key in list(main._flashes):
+            message, level, _ = main._flashes[key]
+            main._flashes[key] = (message, level, 0.0)
+    main.take_flash(Request({main.FLASH_COOKIE: "nonsense"}))
+    if main._flashes:
+        problems.append(f"{len(main._flashes)} stale message(s) were kept")
+
+    check("a message is shown once and then gone", not problems,
+          "; ".join(problems[:3]))
+
+
 def corrected_rules_drop_their_verdicts() -> None:
     """A corrected signature has to reach the files already judged by the old one."""
     from engine import db
@@ -618,6 +677,7 @@ def main() -> int:
     smart_values_are_judged()
     a_restart_closes_what_it_interrupted()
     corrected_rules_drop_their_verdicts()
+    a_message_is_shown_once_and_then_gone()
     names_are_only_as_restricted_as_a_path()
     translations_match()
     templates_have_their_keys()

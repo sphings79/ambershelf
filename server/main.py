@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
+import threading
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -180,9 +183,7 @@ def login_page(request: Request):
     if auth.session_valid(request.cookies.get(auth.COOKIE_NAME), touch=False):
         return RedirectResponse("/", status_code=303)
     return render("login.html", request,
-                  next_target=safe_next(request.query_params.get("next")),
-                  msg=request.query_params.get("msg"),
-                  level=request.query_params.get("level", "info"))
+                  next_target=safe_next(request.query_params.get("next")))
 
 
 @app.post("/login")
@@ -219,9 +220,7 @@ def first_password_page(request: Request):
         return RedirectResponse("/", status_code=303)
     if not auth.session_valid(request.cookies.get(auth.COOKIE_NAME), touch=False):
         return RedirectResponse("/login", status_code=303)
-    return render("password_first.html", request,
-                  msg=request.query_params.get("msg"),
-                  level=request.query_params.get("level", "info"))
+    return render("password_first.html", request)
 
 
 @app.post("/password/first")
@@ -346,6 +345,8 @@ def context(request: Request, **extra) -> dict:
         }, ensure_ascii=False),
     }
     base.update(extra)
+    if base.get("msg") is None:
+        base["msg"], base["level"] = take_flash(request)
     # Routes hand back short keys for anything they say themselves, so the
     # message ends up in the reader's language rather than the engine's.
     message = base.get("msg")
@@ -357,7 +358,10 @@ def context(request: Request, **extra) -> dict:
 def render(name: str, request: Request, **extra) -> HTMLResponse:
     values = context(request, **extra)
     values.pop("request", None)
-    return templates.TemplateResponse(request, name, values)
+    response = templates.TemplateResponse(request, name, values)
+    if request.cookies.get(FLASH_COOKIE):
+        response.delete_cookie(FLASH_COOKIE, path="/")
+    return response
 
 
 def back(request: Request, fallback: str = "/") -> RedirectResponse:
@@ -365,17 +369,44 @@ def back(request: Request, fallback: str = "/") -> RedirectResponse:
     return RedirectResponse(target, status_code=303)
 
 
-def flash(request: Request, url: str, message: str, level: str = "info") -> RedirectResponse:
-    """Carry a message to the next page.
+#: One-shot messages waiting to be shown, by handle. They live for one page
+#: view and are gone whether or not anybody looked, so memory is the right
+#: place for them - a restart losing one costs nothing.
+FLASH_COOKIE = "ambershelf_msg"
+FLASH_SECONDS = 60
+_flashes: dict[str, tuple[str, str, float]] = {}
+_flash_lock = threading.Lock()
 
-    The message is escaped: it contains whatever the engine or a user typed,
-    and a semicolon or an ampersand in it would otherwise end the parameter
-    and take the rest of the sentence with it.
+
+def take_flash(request: Request) -> tuple[str | None, str]:
+    """Fetch the message meant for this reader, and forget it."""
+    handle = request.cookies.get(FLASH_COOKIE)
+    now = time.time()
+    with _flash_lock:
+        for stale in [key for key, (_, _, at) in _flashes.items()
+                      if now - at > FLASH_SECONDS]:
+            _flashes.pop(stale, None)
+        entry = _flashes.pop(handle, None) if handle else None
+    if entry is None:
+        return None, "info"
+    return entry[0], entry[1]
+
+
+def flash(request: Request, url: str, message: str, level: str = "info") -> RedirectResponse:
+    """Carry a message to the next page, without putting it in the address.
+
+    A message names disks, paths and reasons. In a query parameter all of
+    that ends up in the browser history and in every proxy log on the way,
+    and reloading the page brings it back as if it had just happened. So it
+    is kept here and the reader carries nothing but a handle to it.
     """
-    separator = "&" if "?" in url else "?"
-    return RedirectResponse(
-        f"{url}{separator}msg={quote(message, safe='')}&level={level}",
-        status_code=303)
+    handle = secrets.token_urlsafe(12)
+    with _flash_lock:
+        _flashes[handle] = (message, level, time.time())
+    response = RedirectResponse(url, status_code=303)
+    response.set_cookie(FLASH_COOKIE, handle, max_age=FLASH_SECONDS, httponly=True,
+                        samesite="lax", secure=arrived_securely(request), path="/")
+    return response
 
 
 # ---------------------------------------------------------------- overview --
@@ -387,9 +418,7 @@ def overview(request: Request):
     for row in db.all_sets():
         sets.append(set_state(row["name"]))
     return render("overview.html", request, sets=sets,
-                  smart=db.smart_reports(),
-                  msg=request.query_params.get("msg"),
-                  level=request.query_params.get("level", "info"))
+                  smart=db.smart_reports())
 
 
 def set_state(set_name: str) -> dict:
@@ -519,9 +548,7 @@ def disks_page(request: Request):
                   smart=db.smart_reports(),
                   sets_in_use=sorted({row["set_name"] for row in registered}),
                   indexed={row["id"]: scanner.scan_state(row["id"])["files"]
-                           for row in registered},
-                  msg=request.query_params.get("msg"),
-                  level=request.query_params.get("level", "info"))
+                           for row in registered})
 
 
 @app.post("/disks/forget")
@@ -876,9 +903,7 @@ def plan_page(request: Request, set_name: str):
                   readiness=compare.readiness(set_name),
                   needs_approval=compare.NEEDS_APPROVAL,
                   kinds=[compare.NEW, compare.CHANGED, compare.RENAMED, compare.DELETED,
-                         compare.SLAVE_ONLY, compare.OUT_OF_SCOPE, compare.UNREADABLE],
-                  msg=request.query_params.get("msg"),
-                  level=request.query_params.get("level", "info"))
+                         compare.SLAVE_ONLY, compare.OUT_OF_SCOPE, compare.UNREADABLE])
 
 
 @app.post("/sets/{set_name}/plan/{plan_id}/decide")
@@ -988,9 +1013,7 @@ def assign_page(request: Request, set_name: str):
 
     return render("assign.html", request, set_name=set_name, state=state,
                   proposals=proposals,
-                  slaves={row["id"]: dict(row) for row in db.slaves_of_set(set_name)},
-                  msg=request.query_params.get("msg"),
-                  level=request.query_params.get("level", "info"))
+                  slaves={row["id"]: dict(row) for row in db.slaves_of_set(set_name)})
 
 
 @app.post("/sets/{set_name}/assign")
@@ -1059,9 +1082,7 @@ def findings_page(request: Request):
     sets = [row["name"] for row in db.all_sets()]
     chosen = request.query_params.get("set") or (sets[0] if sets else None)
     return render("findings.html", request, sets=sets, chosen=chosen,
-                  findings=db.open_findings(chosen) if chosen else [],
-                  msg=request.query_params.get("msg"),
-                  level=request.query_params.get("level", "info"))
+                  findings=db.open_findings(chosen) if chosen else [])
 
 
 @app.post("/findings/clear")
@@ -1100,9 +1121,7 @@ def settings_page(request: Request):
     values = {key: db.get_setting(key) for key in config.DEFAULT_SETTINGS}
     return render("settings.html", request, values=values,
                   sessions=auth.active_sessions() if config.login_required() else [],
-                  current_token=request.cookies.get(auth.COOKIE_NAME),
-                  msg=request.query_params.get("msg"),
-                  level=request.query_params.get("level", "info"))
+                  current_token=request.cookies.get(auth.COOKIE_NAME))
 
 
 @app.post("/settings")

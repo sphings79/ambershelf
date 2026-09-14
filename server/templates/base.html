@@ -110,11 +110,17 @@
     {% endif %}
 
     {% if msg %}
-      <div class="note {{ level }} fade-up">
+      {# Good news goes away by itself; a warning or an error waits to be
+         read, because a message nobody caught is now gone for good - it is
+         no longer in the address bar to reload. #}
+      <div class="note {{ level }} fade-up flash"
+           {% if level in ('ok', 'info') %}data-hide-after="10"{% endif %}>
         <span class="note-icon">
           {{ ui.icon('alert' if level == 'error' else ('check' if level == 'ok' else 'info'), 18) }}
         </span>
         <div>{{ msg }}</div>
+        <button type="button" class="flash-close" aria-label="{{ t('common.close') }}"
+                title="{{ t('common.close') }}">{{ ui.icon('close', 14) }}</button>
       </div>
     {% endif %}
 

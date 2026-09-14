@@ -95,3 +95,30 @@
   poll();
   setInterval(poll, 2000);
 })();
+
+// --------------------------------------------------------------- messages
+// A message is shown once and then gone - it is no longer carried in the
+// address, so reloading will not bring it back. Which is exactly why only
+// the harmless ones disappear on their own.
+(function () {
+  var notes = document.querySelectorAll(".flash");
+
+  function dismiss(note) {
+    note.style.opacity = "0";
+    note.style.transition = "opacity .4s";
+    setTimeout(function () { note.remove(); }, 400);
+  }
+
+  Array.prototype.forEach.call(notes, function (note) {
+    var close = note.querySelector(".flash-close");
+    if (close) {
+      close.addEventListener("click", function () { dismiss(note); });
+    }
+    var seconds = parseInt(note.getAttribute("data-hide-after"), 10);
+    if (seconds > 0) {
+      var timer = setTimeout(function () { dismiss(note); }, seconds * 1000);
+      // Reading it should not be a race: hovering keeps it on screen.
+      note.addEventListener("mouseenter", function () { clearTimeout(timer); });
+    }
+  });
+})();
