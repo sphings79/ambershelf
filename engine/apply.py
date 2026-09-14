@@ -227,7 +227,7 @@ def apply_plan(job: Job, plan_id: int, kinds: tuple[str, ...] | None = None) -> 
     job.bytes_done = 0
 
     for slave_id, by_kind in grouped.items():
-        slave = db.disk_by_id(slave_id)
+        slave = db.disk_by_id(slave_id, set_name)
         if slave is None:
             continue
         slave_root = backend.mountpoint_of(slave)

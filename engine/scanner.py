@@ -55,8 +55,14 @@ def finish_scan_record(scan_id: int, state: str, message: str = "") -> None:
                "WHERE id = ?", (state, db.now(), message, scan_id))
 
 
-def scan_disk(job: Job, disk_id: int) -> None:
-    disk = db.disk_by_id(disk_id)
+def scan_disk(job: Job, disk_id: int, set_name: str | None = None) -> None:
+    """Index one disk. The set is only context, never the subject.
+
+    What is found belongs to the disk - a master shared by two sets is read
+    once and both see the result. The set is carried along so that findings
+    and log entries end up where the reader started from.
+    """
+    disk = db.disk_by_id(disk_id, set_name)
     if disk is None:
         raise RuntimeError("this disk is no longer registered")
 

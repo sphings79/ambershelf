@@ -459,12 +459,25 @@ def sync_disks_from_helper(registrations: list[dict], sets: list[dict] | None = 
                     (entry["name"], disk_id))
 
 
-def disk_by_uuid(fs_uuid: str) -> sqlite3.Row | None:
-    return one("SELECT * FROM disks WHERE fs_uuid = ?", (fs_uuid,))
+#: A disk on its own has no role and no set any more, but almost everything
+#: that looks one up wants to know both. These two answer with the disk *and*
+#: what it is - for the set that was asked about, or for any set it is in.
+DISK_WITH_ROLE = """
+    SELECT disks.*,
+           (SELECT role FROM members WHERE members.disk_id = disks.id
+             ORDER BY (members.set_name = ?2) DESC LIMIT 1) AS role,
+           (SELECT set_name FROM members WHERE members.disk_id = disks.id
+             ORDER BY (members.set_name = ?2) DESC LIMIT 1) AS set_name
+      FROM disks
+"""
 
 
-def disk_by_id(disk_id: int) -> sqlite3.Row | None:
-    return one("SELECT * FROM disks WHERE id = ?", (disk_id,))
+def disk_by_uuid(fs_uuid: str, set_name: str | None = None) -> sqlite3.Row | None:
+    return one(DISK_WITH_ROLE + " WHERE disks.fs_uuid = ?1", (fs_uuid, set_name))
+
+
+def disk_by_id(disk_id: int, set_name: str | None = None) -> sqlite3.Row | None:
+    return one(DISK_WITH_ROLE + " WHERE disks.id = ?1", (disk_id, set_name))
 
 
 #: Reading a disk together with what one set makes of it. The role and the

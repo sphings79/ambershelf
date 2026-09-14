@@ -588,7 +588,7 @@ def disks_page(request: Request):
 @app.post("/disks/forget")
 def forget_disk(request: Request, fs_uuid: str = Form(...), confirm: str = Form("")):
     """Forget one disk. What is on it is not touched."""
-    disk = db.disk_by_uuid(fs_uuid.strip())
+    disk = db.disk_by_uuid(fs_uuid.strip())   # any set it is in will do
     if disk is None:
         return flash(request, "/disks", "forget.unknown", "error")
     if confirm != disk["display_name"]:
@@ -858,7 +858,7 @@ def umount_set(request: Request, set_name: str):
 
 @app.post("/sets/{set_name}/scan/{disk_id}")
 def scan_disk(request: Request, set_name: str, disk_id: int):
-    disk = db.disk_by_id(disk_id)
+    disk = db.disk_by_id(disk_id, set_name)
     if disk is None:
         return flash(request, "/", "unknown disk", "error")
     if manager.busy_with(disk_id=disk_id) is not None:
@@ -866,7 +866,7 @@ def scan_disk(request: Request, set_name: str, disk_id: int):
 
     manager.submit(
         "scan", f"{disk['display_name']}",
-        lambda job: scanner.scan_disk(job, disk_id),
+        lambda job: scanner.scan_disk(job, disk_id, set_name),
         set_name=set_name, disk_id=disk_id,
     )
     return flash(request, "/", "indexing started", "ok")
@@ -891,7 +891,8 @@ def scan_all(request: Request, set_name: str):
         if manager.busy_with(disk_id=disk["id"]) is not None:
             continue
         manager.submit("scan", disk["display_name"],
-                       lambda job, disk_id=disk["id"]: scanner.scan_disk(job, disk_id),
+                       lambda job, disk_id=disk["id"]: scanner.scan_disk(
+                           job, disk_id, set_name),
                        set_name=set_name, disk_id=disk["id"])
         queued.append(disk["display_name"])
 
