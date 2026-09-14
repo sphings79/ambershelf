@@ -97,7 +97,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.mounted_ro": "eingehängt, nur lesend",
         "disks.mounted_rw": "eingehängt, schreibend",
         "disks.not_mounted": "nicht eingehängt",
-        "disks.safe_to_unplug": "kann abgezogen werden",
+        "disks.safe_to_unplug": "Kann abgezogen werden",
         "disks.eject": "Satz {name} auswerfen",
         "disks.eject_help":
             "Hängt alle Platten dieses Satzes aus. Erst danach dürfen sie abgezogen werden.",
@@ -656,7 +656,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.mounted_ro": "mounted, read-only",
         "disks.mounted_rw": "mounted, writable",
         "disks.not_mounted": "not mounted",
-        "disks.safe_to_unplug": "safe to unplug",
+        "disks.safe_to_unplug": "Safe to unplug",
         "disks.eject": "Eject set {name}",
         "disks.eject_help":
             "Unmounts every disk of this set. Only then may they be unplugged.",

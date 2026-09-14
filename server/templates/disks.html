@@ -389,8 +389,11 @@
                 {% elif l.mounted %}
                   <span class="chip warn">{{ ui.icon('unlock', 12) }} {{ t('disks.mounted_rw') }}</span>
                 {% else %}
-                  <span class="chip outline" title="{{ t('disks.safe_to_unplug') }}">
-                    {{ ui.icon('eject', 12) }} {{ t('disks.not_mounted') }}</span>
+                  {# "not mounted" is the fact; what somebody standing at the
+                     machine wants to know is whether they may pull the plug.
+                     So that is what the badge says. #}
+                  <span class="chip ok" title="{{ t('disks.not_mounted') }}">
+                    {{ ui.icon('eject', 12) }} {{ t('disks.safe_to_unplug') }}</span>
                 {% endif %}
               </div>
             </td>

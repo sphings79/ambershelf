@@ -91,6 +91,9 @@
             {% else %}
               <span class="chip warn">{{ ui.icon('unlock', 12) }} {{ t('overview.writable') }}</span>
             {% endif %}
+          {% elif d.connected %}
+            <span class="chip ok" title="{{ t('overview.not_mounted') }}">
+              {{ ui.icon('eject', 12) }} {{ t('disks.safe_to_unplug') }}</span>
           {% else %}
             <span class="chip">{{ t('overview.not_mounted') }}</span>
           {% endif %}
