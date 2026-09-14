@@ -13,11 +13,17 @@
     <div class="field">
       <span>{{ t('settings.theme') }}</span>
       <form class="segmented" method="post" action="/theme" style="max-width:210px">
-        <button name="theme" value="light" class="{{ 'on' if theme == 'light' }}">
+        <button name="theme" value="light" class="{{ 'on' if theme == 'light' }}"
+                title="{{ t('settings.theme.light') }}"
+                aria-label="{{ t('settings.theme.light') }}">
           {{ ui.icon('sun', 14) }}</button>
-        <button name="theme" value="system" class="{{ 'on' if theme == 'system' }}">
+        <button name="theme" value="system" class="{{ 'on' if theme == 'system' }}"
+                title="{{ t('settings.theme.system') }}"
+                aria-label="{{ t('settings.theme.system') }}">
           {{ ui.icon('monitor', 14) }}</button>
-        <button name="theme" value="dark" class="{{ 'on' if theme == 'dark' }}">
+        <button name="theme" value="dark" class="{{ 'on' if theme == 'dark' }}"
+                title="{{ t('settings.theme.dark') }}"
+                aria-label="{{ t('settings.theme.dark') }}">
           {{ ui.icon('moon', 14) }}</button>
       </form>
     </div>
@@ -27,7 +33,8 @@
       <form class="swatches" method="post" action="/accent">
         {% for name, colour in accent_swatches.items() %}
           <button class="swatch {{ 'on' if accent == name }}" name="accent" value="{{ name }}"
-                  style="background: {{ colour }}" aria-label="{{ name }}">
+                  style="background: {{ colour }}" title="{{ t('accent.' ~ name) }}"
+                  aria-label="{{ t('accent.' ~ name) }}">
             {% if accent == name %}{{ ui.icon('check', 15) }}{% endif %}
           </button>
         {% endfor %}

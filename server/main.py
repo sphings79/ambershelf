@@ -534,6 +534,28 @@ def disks_page(request: Request):
         except BackendError as exc:
             contents = {"readable": False, "entries": [], "count": 0, "error": str(exc)}
     registered = db.query("SELECT * FROM disks ORDER BY set_name, role DESC")
+
+    # Whether a disk is connected and whether it is mounted are two different
+    # questions, and the answer to the second decides whether it is safe to
+    # pull the plug. Both belong on the page that lists the disks.
+    live: dict[int, dict] = {}
+    mounted_sets: set[str] = set()
+    for name in sorted({row["set_name"] for row in registered}):
+        try:
+            status = {entry["fs_uuid"]: entry for entry in backend.status(name)}
+        except BackendError:
+            status = {}
+        for row in registered:
+            if row["set_name"] != name:
+                continue
+            entry = status.get(row["fs_uuid"], {})
+            live[row["id"]] = {
+                "connected": bool(entry.get("connected")),
+                "mounted": bool(entry.get("mounted")),
+                "read_only": bool(entry.get("read_only")),
+            }
+            if entry.get("mounted"):
+                mounted_sets.add(name)
     return render("disks.html", request, connected=connected, error=error,
                   registered=registered,
                   show_all=show_all, hidden=hidden, excluded=excluded,
@@ -551,6 +573,7 @@ def disks_page(request: Request):
                   can_demote=backend.can_demote(),
                   smart=db.smart_reports(),
                   sets_in_use=sorted({row["set_name"] for row in registered}),
+                  live=live, mounted_sets=sorted(mounted_sets),
                   indexed={row["id"]: scanner.scan_state(row["id"])["files"]
                            for row in registered})
 

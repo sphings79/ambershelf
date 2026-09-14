@@ -262,6 +262,18 @@
     </div>
   {% endif %}
 
+  {% if mounted_sets %}
+    <div class="actions" style="margin-bottom:12px">
+      {% for name in mounted_sets %}
+        <form class="inline" method="post" action="/sets/{{ name }}/umount">
+          <button title="{{ t('disks.eject_help') }}">
+            {{ ui.icon('eject', 15) }} {{ t('disks.eject', name=name) }}</button>
+        </form>
+      {% endfor %}
+      <span class="faint small">{{ t('disks.eject_help') }}</span>
+    </div>
+  {% endif %}
+
   {% if sets_in_use %}
     <div class="actions" style="margin-bottom:12px">
       {% for name in sets_in_use %}
@@ -341,6 +353,7 @@
             <th>{{ t('disks.fstype') }}</th>
             <th class="num">{{ t('common.size') }}</th>
             <th>{{ t('disks.uuid') }}</th>
+            <th>{{ t('disks.state') }}</th>
             <th>{{ t('smart.column') }}</th>
             <th></th>
           </tr>
@@ -361,6 +374,26 @@
               {% endif %}</td>
             <td class="id-cell"><div class="mono id small">{{ d.fs_uuid }}</div>
               <div class="faint small mono id">{{ d.serial or '' }}</div></td>
+            <td>
+              {% set l = live.get(d.id, {}) %}
+              <div class="chips" style="flex-direction:column; align-items:flex-start">
+                {% if l.connected %}
+                  <span class="chip ok">{{ ui.icon('plug', 12) }} {{ t('disks.connected') }}</span>
+                {% else %}
+                  <span class="chip">{{ ui.icon('plug', 12) }} {{ t('disks.not_connected') }}</span>
+                {% endif %}
+
+                {% if not l.connected %}
+                {% elif l.mounted and l.read_only %}
+                  <span class="chip ok">{{ ui.icon('lock', 12) }} {{ t('disks.mounted_ro') }}</span>
+                {% elif l.mounted %}
+                  <span class="chip warn">{{ ui.icon('unlock', 12) }} {{ t('disks.mounted_rw') }}</span>
+                {% else %}
+                  <span class="chip outline" title="{{ t('disks.safe_to_unplug') }}">
+                    {{ ui.icon('eject', 12) }} {{ t('disks.not_mounted') }}</span>
+                {% endif %}
+              </div>
+            </td>
             <td>
               {% set s = smart.get(d.id) %}
               {% if not s %}

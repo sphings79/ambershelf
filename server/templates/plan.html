@@ -129,7 +129,8 @@
       <h2>{{ t('plan.kind.' ~ kind) }}</h2>
       {% if slave %}<span class="chip outline">{{ slaves.get(slave|int, {}).get('display_name', '') }}</span>{% endif %}
       <div class="actions">
-        <a class="button quiet" href="/sets/{{ set_name }}/plan">{{ ui.icon('close', 15) }}</a>
+        <a class="button quiet" href="/sets/{{ set_name }}/plan"
+           title="{{ t('plan.show_all') }}">{{ ui.icon('close', 15) }}</a>
       </div>
     </div>
     <p class="muted small" style="margin-top:-6px">{{ t('plan.kind.' ~ kind ~ '.help') }}</p>

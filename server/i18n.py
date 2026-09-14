@@ -85,6 +85,22 @@ STRINGS: dict[str, dict[str, str]] = {
             "Einen Master gibst du stattdessen ganz auf (\u201eMaster aufgeben\u201c), danach "
             "ist die Platte unbekannt und du kannst sie neu registrieren, in welcher "
             "Rolle du willst.",
+        "plan.show_all": "Auswahl aufheben, alle zeigen",
+        "accent.amber": "Bernstein",
+        "accent.violet": "Violett",
+        "accent.blue": "Blau",
+        "accent.emerald": "Smaragd",
+        "accent.rose": "Rosé",
+        "disks.state": "Zustand",
+        "disks.connected": "angeschlossen",
+        "disks.not_connected": "nicht angeschlossen",
+        "disks.mounted_ro": "eingehängt, nur lesend",
+        "disks.mounted_rw": "eingehängt, schreibend",
+        "disks.not_mounted": "nicht eingehängt",
+        "disks.safe_to_unplug": "kann abgezogen werden",
+        "disks.eject": "Satz {name} auswerfen",
+        "disks.eject_help":
+            "Hängt alle Platten dieses Satzes aus. Erst danach dürfen sie abgezogen werden.",
         "disks.pick_role": "Rolle wählen …",
         "disks.no_role": "Bitte erst eine Rolle wählen.",
         "claim.look_first":
@@ -628,6 +644,22 @@ STRINGS: dict[str, dict[str, str]] = {
             "disk does not - there is no path for it anywhere. Instead you give a "
             "master up entirely (\u201cGive up master\u201d); the disk is then unknown "
             "and you can register it again in whatever role you want.",
+        "plan.show_all": "Clear the selection, show everything",
+        "accent.amber": "Amber",
+        "accent.violet": "Violet",
+        "accent.blue": "Blue",
+        "accent.emerald": "Emerald",
+        "accent.rose": "Rose",
+        "disks.state": "State",
+        "disks.connected": "connected",
+        "disks.not_connected": "not connected",
+        "disks.mounted_ro": "mounted, read-only",
+        "disks.mounted_rw": "mounted, writable",
+        "disks.not_mounted": "not mounted",
+        "disks.safe_to_unplug": "safe to unplug",
+        "disks.eject": "Eject set {name}",
+        "disks.eject_help":
+            "Unmounts every disk of this set. Only then may they be unplugged.",
         "disks.pick_role": "Choose a role \u2026",
         "disks.no_role": "Choose a role first.",
         "claim.look_first":
