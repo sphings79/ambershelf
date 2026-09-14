@@ -163,9 +163,15 @@ class LinuxBackend:
         return call("volume_state", fs_uuid=fs_uuid, fs_type=fs_type)
 
     def mountpoint_of(self, disk) -> Path:
+        """Where the helper puts this disk. One disk, one place.
+
+        A master may serve several sets, so the path says what the disk is
+        rather than who is using it - otherwise the same volume would be
+        mounted once per set.
+        """
         if disk["role"] == "master":
-            return MOUNT_ROOT / disk["set_name"] / "master"
-        return MOUNT_ROOT / disk["set_name"] / "slaves" / disk["display_name"]
+            return MOUNT_ROOT / "masters" / disk["display_name"]
+        return MOUNT_ROOT / "copies" / disk["display_name"]
 
     def verify_readable(self, disk) -> None:
         mountpoint = self.mountpoint_of(disk)
