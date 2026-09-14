@@ -133,7 +133,7 @@ ambershelf-helper (root)             Weboberfläche
           └──── /mnt/ambershelf (rshared bind) ───┘
 ```
 
-Der Container kann nur darum **bitten**, einen Satz einzuhängen. Er benennt nie ein Gerät,
+Der Container kann nur darum **bitten**, einen Auftrag einzuhängen. Er benennt nie ein Gerät,
 nie eine Einhänge-Option und entscheidet nie über eine Rolle — das ist es, was den Master
 schützt, selbst wenn der Container vollständig übernommen wird.
 
@@ -145,7 +145,7 @@ der Regel vorbei.
 Diese Sperre lösen kannst du, in der Oberfläche unter „Master aufgeben": Hinweis bestätigen,
 Plattennamen eintippen, Passwort eingeben. Die Registrierung wird dabei **entfernt**, nicht
 umgeschrieben — die Platte danach als Kopie anzulegen ist ein zweiter, eigener Schritt, und
-solange der Satz eingehängt ist, wird das Aufgeben verweigert. Der Preis ist ehrlich zu
+solange der Auftrag eingehängt ist, wird das Aufgeben verweigert. Der Preis ist ehrlich zu
 benennen: Der Vorgang läuft über denselben Socket wie alles andere, wer also den Container
 übernimmt *und* an das Passwort kommt, erreicht ihn auch. Wem das zu weit geht, der schaltet
 es mit `"allow_demote": false` in `/etc/ambershelf/disks.conf` ganz ab — dann bleibt nur
@@ -244,15 +244,33 @@ Oberfläche, die Dateien auf Sicherungsplatten löschen kann, verdient zwei.
 ## Benutzung
 
 1. **Platten** — Platte anstecken, benennen, Rolle wählen, registrieren. Der Master wird
-   gelesen, Kopien werden beschrieben.
-2. **Übersicht** — Satz einhängen, dann jede Platte einlesen. Der erste Lauf prüfsummt alles.
-3. **Aufteilung** (wahlweise) — Ordner den Kopien zuteilen. Der Baum beginnt auf Ordnerebene 2,
-   `Fotos/2019` ist also eine Einheit. Alles Unzugeordnete wird als Warnung angezeigt.
+   gelesen, Kopien werden beschrieben. Der erste Master eröffnet einen **Auftrag**.
+2. **Übersicht** — Auftrag einhängen, dann jede Platte einlesen. Der erste Lauf prüfsummt alles.
+3. **Sync-Art** — entweder trägt jede Kopie den vollständigen Bestand, oder die Kopien teilen
+   ihn sich und ergeben zusammen ein Ziel. Im zweiten Fall werden Ordner den Kopien zugeteilt;
+   der Baum beginnt auf Ordnerebene 2, `Fotos/2019` ist also eine Einheit, und alles
+   Unzugeordnete wird als Warnung angezeigt.
 4. **Vorschau** — vergleichen und genau ansehen, was passieren würde.
+
+### Mehrere Aufträge
+
+Ein **Auftrag** ist ein Master und die Kopien, die von ihm leben. Die Sync-Art gilt je
+Auftrag, nicht für das ganze Programm.
+
+Dieselbe Master-Platte darf in mehreren Aufträgen stecken — etwa einmal auf eine große
+Platte gespiegelt und einmal auf zwei kleinere verteilt. Sie wird trotzdem nur **einmal**
+eingelesen und nur einmal eingehängt: Verzeichnis, Prüfsummen und Plattenzustand hängen an
+der Platte, nicht am Auftrag. Wer sie in zwei Aufträgen benutzt, zahlt dafür nichts.
+
+Eine Kopie gehört dagegen immer genau **einem** Auftrag. Zwei Master, die auf dieselbe Platte
+schreiben, würden sich gegenseitig die Buchführung zerstören.
+
+Und eine Platte ist entweder Master oder Kopie, nie beides — auch nicht in verschiedenen
+Aufträgen. Sonst hieße „Master" gar nichts mehr.
 
 ### exFAT und NTFS
 
-Beides geht, auch gemischt innerhalb eines Satzes.
+Beides geht, auch gemischt innerhalb eines Auftrags.
 
 **exFAT** ist das einzige Dateisystem, das macOS und Windows ohne Zusatzsoftware lesen
 **und** beschreiben können — deshalb gewinnt es bei Platten, die herumgereicht werden. Es

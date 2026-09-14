@@ -549,6 +549,57 @@ def a_message_is_shown_once_and_then_gone() -> None:
           "; ".join(problems[:3]))
 
 
+def only_a_master_opens_a_set() -> None:
+    """A set starts from a master, and a name is not handed out twice.
+
+    Both refusals happen before the host is asked anything, so they can be
+    checked without one.
+    """
+    sys.path.insert(0, str(ROOT))
+    try:
+        from server import main
+    except ImportError:
+        notes.append("fastapi is missing - the set check was skipped")
+        return
+    from engine import db
+
+    class Request:
+        cookies: dict = {}
+        headers: dict = {}
+        url = type("U", (), {"scheme": "http"})()
+
+    db.initialise()
+    for table in ("members", "sets"):
+        db.execute(f"DELETE FROM {table} WHERE 1=1")
+    db.execute("DELETE FROM disks WHERE fs_uuid LIKE 'CHECK-%'")
+
+    def disk(uuid, name):
+        return db.execute(
+            "INSERT INTO disks (fs_uuid, display_name, size_bytes, registered_at) "
+            "VALUES (?, ?, 0, '2026-01-01T00:00:00+00:00')", (uuid, name)).lastrowid
+
+    master, copy = disk("CHECK-M", "Master"), disk("CHECK-C", "Kopie")
+    db.set_members("erste", master, [copy])
+
+    problems = []
+    before = [row["name"] for row in db.all_sets()]
+    for what, kwargs in (
+        ("a copy", {"name": "zweite", "fs_uuid": "CHECK-C"}),
+        ("a name already taken", {"name": "erste", "fs_uuid": "CHECK-M"}),
+        ("a disk nobody knows", {"name": "dritte", "fs_uuid": "CHECK-NOPE"}),
+    ):
+        main.create_set(Request(), **kwargs)
+        if [row["name"] for row in db.all_sets()] != before:
+            problems.append(f"{what} opened a set")
+
+    for table in ("members", "sets"):
+        db.execute(f"DELETE FROM {table} WHERE 1=1")
+    db.execute("DELETE FROM disks WHERE fs_uuid LIKE 'CHECK-%'")
+
+    check("only a master opens a set, and only under a free name",
+          not problems, "; ".join(problems[:3]))
+
+
 def corrected_rules_drop_their_verdicts() -> None:
     """A corrected signature has to reach the files already judged by the old one."""
     from engine import db
@@ -589,6 +640,82 @@ def corrected_rules_drop_their_verdicts() -> None:
     db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-ONLY'")
 
     check("a corrected signature reaches the files already judged",
+          not problems, "; ".join(problems[:3]))
+
+
+def a_master_serves_many_sets_and_a_copy_serves_one() -> None:
+    """The rules that make several sets on one master safe.
+
+    Checked against the host registry itself, because that is the half that
+    has to hold even when the container is not trusted.
+    """
+    helper = load(ROOT / "docker" / "helper" / "ambershelf-helper.py")
+
+    with tempfile.TemporaryDirectory() as folder:
+        helper.CONFIG_PATH = Path(folder) / "disks.conf"
+        helper.log = lambda _message: None
+        helper.is_mounted = lambda _path: False
+        helper.list_block_devices = lambda: [
+            {"fs_uuid": uuid, "path": f"/dev/x{n}", "fs_type": "exfat", "serial": None,
+             "label": None, "size": 1, "model": "", "system": False, "mountpoint": None}
+            for n, uuid in enumerate(("AAAA-0001", "AAAA-0002", "AAAA-0003", "AAAA-0004"))]
+
+        def register(uuid, role, set_name, name):
+            return helper.handle_register({"fs_uuid": uuid, "role": role,
+                                           "set_name": set_name, "display_name": name})
+
+        problems = []
+        register("AAAA-0001", "master", "erste", "Master")
+        register("AAAA-0002", "slave", "erste", "Kopie A")
+        register("AAAA-0001", "master", "zweite", "Master")
+        register("AAAA-0003", "slave", "zweite", "Kopie B")
+
+        config = helper.load_config()
+        if len(config["disks"]) != 3:
+            problems.append(f"{len(config['disks'])} disk rows for three disks")
+        if sorted(s["name"] for s in helper.sets_of_disk(config, "AAAA-0001")) != ["erste", "zweite"]:
+            problems.append("the master does not serve both sets")
+
+        # Each refusal on its own, so one rule cannot hide behind another.
+        for what, uuid, role, set_name, name in (
+            ("a master as a copy", "AAAA-0001", "slave", "dritte", "Master"),
+            ("a copy in a second set", "AAAA-0002", "slave", "zweite", "Kopie A"),
+            ("a second master", "AAAA-0004", "master", "erste", "Kopie C"),
+            ("a name taken elsewhere", "AAAA-0004", "slave", "erste", "Kopie B"),
+            ("a copy without a master", "AAAA-0004", "slave", "vierte", "Kopie C"),
+        ):
+            try:
+                register(uuid, role, set_name, name)
+                problems.append(f"{what} was allowed")
+            except RuntimeError:
+                pass
+
+        # Dissolving one set leaves every disk registered - anything else
+        # would pull a shared master out from under the other set.
+        helper.handle_forget_set({"set_name": "erste"})
+        config = helper.load_config()
+        if len(config["disks"]) != 3:
+            problems.append("dissolving a set took disks with it")
+        if [s["name"] for s in helper.all_sets(config)] != ["zweite"]:
+            problems.append("the wrong set was dissolved")
+        if helper.retired_masters(config):
+            problems.append("dissolving a set retired the master")
+        if not helper.is_master_anywhere(config, "AAAA-0001"):
+            problems.append("the master lost its remaining set")
+
+        # And the master stays mounted while another set is still reading it.
+        mounted = {str(helper.MOUNT_ROOT / "copies" / "Kopie B")}
+        helper.is_mounted = lambda path: str(path) in mounted
+        register("AAAA-0001", "master", "dritte", "Master")
+        register("AAAA-0004", "slave", "dritte", "Kopie C")
+        config = helper.load_config()
+        if helper.master_still_needed(config, "AAAA-0001", "dritte") != "zweite":
+            problems.append("a master in use elsewhere was not recognised as busy")
+        mounted.clear()
+        if helper.master_still_needed(config, "AAAA-0001", "dritte") is not None:
+            problems.append("a master nobody is reading was called busy")
+
+    check("a master serves many sets and a copy serves one",
           not problems, "; ".join(problems[:3]))
 
 
@@ -699,8 +826,11 @@ def application_answers() -> None:
     sys.path.insert(0, str(ROOT))
     try:
         from fastapi.testclient import TestClient
-    except ImportError:
-        notes.append("fastapi.testclient needs httpx - smoke test skipped")
+    except (ImportError, RuntimeError) as exc:
+        # Without httpx, older starlette raises ImportError and newer raises
+        # RuntimeError. Catching only the first aborted the whole run on any
+        # machine that had fastapi but not httpx - such as the container.
+        notes.append(f"the smoke test was skipped: {exc}".split(chr(10))[0])
         return
     try:
         from server.main import app
@@ -746,9 +876,11 @@ def main() -> int:
     authentication_holds()
     system_partitions_are_recognised()
     demotion_is_the_only_way_out_of_a_master()
+    a_master_serves_many_sets_and_a_copy_serves_one()
     smart_values_are_judged()
     one_disk_serves_many_sets_but_keeps_one_index()
     a_restart_closes_what_it_interrupted()
+    only_a_master_opens_a_set()
     corrected_rules_drop_their_verdicts()
     a_message_is_shown_once_and_then_gone()
     names_are_only_as_restricted_as_a_path()

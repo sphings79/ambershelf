@@ -243,6 +243,22 @@ delete files on a backup disk deserves two.
    `Photos/2019` is one unit. Anything unassigned is shown as a warning.
 4. **Preview** — compare, then look at exactly what would happen.
 
+### More than one set
+
+A **set** is one master and the copies that live off it. The sync mode belongs to the set,
+not to the program.
+
+The same master disk may take part in several sets - mirrored onto one large disk in one,
+split across two smaller ones in another. It is still indexed **once** and mounted once:
+the index, the checksums and the health readings belong to the disk rather than to any
+set, so using it twice costs nothing.
+
+A copy, by contrast, belongs to exactly one set. Two masters writing onto one disk would
+each destroy the other's bookkeeping.
+
+And a disk is either a master or a copy, never both - not even in different sets.
+Otherwise "master" would stop meaning anything.
+
 ### exFAT and NTFS
 
 Both work, and a set may mix them.
