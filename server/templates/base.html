@@ -39,15 +39,18 @@
       <a href="/disks" class="{{ 'on' if request.url.path == '/disks' }}">
         {{ ui.icon('disk') }}<span>{{ t('nav.disks') }}</span></a>
 
-      {% if sets %}
-        <span class="nav-label">{{ sets[0]['name'] }}</span>
-        <a href="/sets/{{ sets[0]['name'] }}/assign"
-           class="{{ 'on' if '/assign' in request.url.path }}">
+      {# Every set gets its own heading. With one set this reads as it always
+         did; with several, it is the only place that says which one a page
+         belongs to. #}
+      {% for entry in sets %}
+        <span class="nav-label">{{ entry['name'] }}</span>
+        <a href="/sets/{{ entry['name'] }}/assign"
+           class="{{ 'on' if request.url.path == '/sets/' ~ entry['name'] ~ '/assign' }}">
           {{ ui.icon('split') }}<span>{{ t('nav.assign') }}</span></a>
-        <a href="/sets/{{ sets[0]['name'] }}/plan"
-           class="{{ 'on' if '/plan' in request.url.path }}">
+        <a href="/sets/{{ entry['name'] }}/plan"
+           class="{{ 'on' if request.url.path == '/sets/' ~ entry['name'] ~ '/plan' }}">
           {{ ui.icon('preview') }}<span>{{ t('nav.plan') }}</span></a>
-      {% endif %}
+      {% endfor %}
 
       <span class="nav-label">{{ t('nav.section.system') }}</span>
       <a href="/findings" class="{{ 'on' if request.url.path == '/findings' }}">

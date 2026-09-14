@@ -163,6 +163,12 @@ class MacBackend:
         whole = re.sub(r"s\d+$", "", volume.id.rsplit("/", 1)[-1])
         return smart.interpret(smart.run_smartctl(f"/dev/{whole}"))
 
+    def forget_set(self, set_name: str) -> dict:
+        for disk in self.registry.all():
+            if disk.get("set_name") == set_name:
+                self.registry.remove(disk["fs_uuid"])
+        return {"ok": True}
+
     def can_demote(self) -> bool:
         return True
 

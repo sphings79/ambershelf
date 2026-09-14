@@ -18,6 +18,10 @@
 {% block title %}{{ t('disks.title') }}{% endblock %}
 {% block content %}
 
+<datalist id="known-sets">
+  {% for name in sets_in_use %}<option value="{{ name }}"></option>{% endfor %}
+</datalist>
+
 <div class="page-head">
   <div>
     <h1>{{ t('disks.title') }}</h1>
@@ -113,7 +117,7 @@
                   {{ ui.icon('check', 12) }} {{ d.registration.display_name }}
                 </span>
                 <div class="faint small">{{ t('role.' ~ d.registration.role) }} ·
-                  {{ d.registration.set_name }}</div>
+                  {{ (d.registration.sets or [d.registration.set_name])|join(', ') }}</div>
               {% elif d.fs_uuid %}
                 {# The role starts empty on purpose. Pre-selected it read like
                    a statement of fact, and one click on a prominent button
@@ -124,9 +128,12 @@
                   <input type="hidden" name="token" value="{{ d.token }}">
                   <input name="display_name" placeholder="{{ t('disks.display_name') }}"
                          value="{{ d.name }}" size="12" maxlength="63" required>
-                  <input name="set_name" placeholder="{{ t('disks.set_name') }}"
-                         value="{{ registered[0]['set_name'] if registered else 'fotoarchiv' }}"
-                         size="10" required>
+                  {# A list rather than a plain field: the existing sets are
+                     offered, and a new name may still be typed - which is
+                     how a master opens one. No script involved. #}
+                  <input name="set_name" list="known-sets" size="12" required
+                         placeholder="{{ t('disks.set_name') }}"
+                         value="{{ sets_in_use[0] if sets_in_use else 'fotoarchiv' }}">
                   <select name="role" required>
                     <option value="" selected>{{ t('disks.pick_role') }}</option>
                     <option value="slave">{{ t('role.slave') }}</option>
@@ -256,6 +263,80 @@
   {% endif %}
 </section>
 
+{% if jobs %}
+<section class="card">
+  <div class="card-head">
+    <h2>{{ t('sets.title') }}</h2>
+    <span class="chip outline">{{ jobs|length }}</span>
+  </div>
+  <p class="muted small" style="margin-top:-6px">{{ t('sets.note') }}</p>
+
+  <div class="grid-cards">
+    {% for job in jobs %}
+      <article class="disk">
+        <div class="disk-top">
+          <span class="disk-icon">{{ ui.icon('overview', 19) }}</span>
+          <div style="flex:1; min-width:0">
+            <div class="disk-name">{{ job.name }}</div>
+            <div class="faint small">
+              {{ t('mode.pool') if job.split_enabled else t('mode.mirror') }}</div>
+          </div>
+          {% if job.name in mounted_sets %}
+            <form class="inline" method="post" action="/sets/{{ job.name }}/umount">
+              <button class="quiet" title="{{ t('disks.eject_help') }}">
+                {{ ui.icon('eject', 14) }}</button>
+            </form>
+          {% endif %}
+        </div>
+        <div class="job-meta" style="flex-direction:column; align-items:flex-start; gap:3px">
+          {% if job.master %}
+            <span>{{ ui.icon('lock', 12) }} {{ t('role.master') }}:
+              <strong>{{ job.master.display_name }}</strong></span>
+          {% else %}
+            <span class="danger">{{ t('ready.no_master') }}</span>
+          {% endif %}
+          {% for copy in job.copies %}
+            <span>{{ ui.icon('unlock', 12) }} {{ t('role.slave') }}:
+              {{ copy.display_name }}</span>
+          {% else %}
+            <span class="muted">{{ t('ready.no_slave') }}</span>
+          {% endfor %}
+        </div>
+        <div class="actions" style="margin-top:10px">
+          <a class="button quiet" href="/sets/{{ job.name }}/assign">
+            {{ ui.icon('split', 14) }} {{ t('nav.assign') }}</a>
+          <a class="button quiet" href="/sets/{{ job.name }}/plan">
+            {{ ui.icon('preview', 14) }} {{ t('nav.plan') }}</a>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+
+  {% if masters %}
+    {# A master may back the same archive up in more than one direction, so
+       opening another set from it is ordinary work rather than a special
+       case. Only a master can open one: a set without one has nothing to
+       copy from. #}
+    <form class="actions" method="post" action="/sets" style="margin-top:14px">
+      <label class="field" style="flex:0 0 auto">
+        <span>{{ t('sets.new_master') }}</span>
+        <select name="fs_uuid">
+          {% for m in masters %}
+            <option value="{{ m.fs_uuid }}">{{ m.display_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field" style="flex:0 0 auto">
+        <span>{{ t('sets.new_name') }}</span>
+        <input name="name" size="16" maxlength="63" required
+               placeholder="{{ t('sets.new_placeholder') }}">
+      </label>
+      <button style="align-self:flex-end">{{ t('sets.create') }}</button>
+    </form>
+  {% endif %}
+</section>
+{% endif %}
+
 <section class="card">
   <div class="card-head">
     <h2>{{ t('disks.registered') }}</h2>
@@ -383,7 +464,7 @@
             <td><span class="chip {{ 'accent' if d.role == 'master' else 'outline' }}">
               {{ ui.icon('lock' if d.role == 'master' else 'unlock', 12) }}
               {{ t('role.' ~ d.role) }}</span></td>
-            <td>{{ d.set_name }}</td>
+            <td class="small">{{ d.set_names or '—' }}</td>
             <td class="small">{{ d.fs_type }}</td>
             <td class="num">{{ d.size_bytes|bytes }}
               {% if indexed.get(d.id) %}

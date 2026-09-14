@@ -154,6 +154,14 @@ class Backend(Protocol):
         """
         return smart.interpret({"ok": False, "reason": "smart.unsupported"})
 
+    def forget_set(self, set_name: str) -> dict:
+        """Dissolve a set. The disks in it stay registered.
+
+        Where the registry keeps no sets of its own, a set stops existing as
+        soon as nothing claims to be in it, so there is nothing to do.
+        """
+        return {"ok": True}
+
     def can_demote(self) -> bool:
         """Whether giving up a master is reachable from here at all.
 

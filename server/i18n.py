@@ -27,7 +27,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "common.path": "Pfad",
         "common.disk": "Platte",
         "common.role": "Rolle",
-        "common.set": "Satz",
+        "common.set": "Auftrag",
         "common.state": "Zustand",
         "common.none": "keine",
         "common.unknown": "unbekannt",
@@ -45,7 +45,7 @@ STRINGS: dict[str, dict[str, str]] = {
                                "Prüfe auf dem Host: systemctl status ambershelf-helper",
 
         "overview.title": "Übersicht",
-        "overview.no_sets": "Noch kein Satz eingerichtet. Registriere zuerst eine Platte.",
+        "overview.no_sets": "Noch kein Auftrag eingerichtet. Registriere zuerst eine Platte als Master.",
         "overview.connected": "angeschlossen",
         "overview.not_connected": "nicht angeschlossen",
         "overview.mounted": "eingehängt",
@@ -76,7 +76,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.fstype": "Dateisystem",
         "disks.uuid": "UUID",
         "disks.display_name": "Anzeigename",
-        "disks.set_name": "Satz",
+        "disks.set_name": "Auftrag",
         "disks.already": "bereits registriert",
         "disks.role_locked": "Rollen lassen sich nicht umschreiben",
         "disks.role_locked_help":
@@ -102,9 +102,23 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.mounted_rw": "eingehängt, schreibend",
         "disks.not_mounted": "nicht eingehängt",
         "disks.safe_to_unplug": "Kann abgezogen werden",
-        "disks.eject": "Satz {name} auswerfen",
+        "disks.eject": "Auftrag {name} auswerfen",
         "disks.eject_help":
-            "Hängt alle Platten dieses Satzes aus. Erst danach dürfen sie abgezogen werden.",
+            "Hängt alle Platten dieses Auftrags aus. Erst danach dürfen sie abgezogen werden. Ein Master, den ein anderer Auftrag noch benutzt, bleibt eingehängt.",
+        "sets.title": "Aufträge",
+        "sets.note":
+            "Ein Auftrag ist ein Master und die Kopien, die von ihm leben. Dieselbe "
+            "Master-Platte darf in mehreren Aufträgen stecken — eingelesen wird sie "
+            "trotzdem nur einmal. Eine Kopie gehört immer genau einem Auftrag.",
+        "sets.new_master": "Master",
+        "sets.new_name": "Name des neuen Auftrags",
+        "sets.new_placeholder": "z. B. zweitsicherung",
+        "sets.create": "Auftrag anlegen",
+        "sets.created": "Auftrag angelegt. Jetzt fehlt noch mindestens eine Kopie.",
+        "sets.exists": "Diesen Auftrag gibt es schon.",
+        "sets.master_only":
+            "Nur ein Master kann einen Auftrag eröffnen — eine Kopie hätte nichts, "
+            "wovon sie kopieren könnte.",
         "disks.pick_role": "Rolle wählen …",
         "disks.no_role": "Bitte erst eine Rolle wählen.",
         "claim.look_first":
@@ -231,7 +245,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "overview.scan_all": "Alle einlesen",
         "overview.compare.needs_index": "Erst einlesen, dann vergleichen",
         "scan.started": "Einlesen gestartet.",
-        "scan.none_ready": "Keine Platte bereit — erst den Satz einhängen.",
+        "scan.none_ready": "Keine Platte bereit — erst den Auftrag einhängen.",
         "format.help": "Diese Platte formatieren",
         "format.do": "Jetzt löschen und formatieren",
         "format.done": "Formatiert.",
@@ -279,7 +293,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "warum. Systempartitionen werden gar nicht erst angeboten.",
         "forget.help": "Diese Platte vergessen",
         "forget.confirm": "Zum Bestätigen {name} eintippen:",
-        "forget.set": "Satz {name} auflösen",
+        "forget.set": "Auftrag {name} auflösen",
         "forget.set_confirm": "Zum Auflösen {name} eintippen:",
         "forget.do": "Vergessen",
         "forget.done": "Vergessen. Auf der Platte wurde nichts angefasst.",
@@ -466,7 +480,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "apply.refused.stale": "Es gibt einen neueren Vergleich — sieh dir den an.",
         "apply.refused.blocked": "Die Notbremse ist eingelegt.",
         "apply.refused.applied": "Dieser Plan wurde bereits ausgeführt.",
-        "apply.refused.no_master": "Dieser Satz hat keinen Master.",
+        "apply.refused.no_master": "Dieser Auftrag hat keinen Master.",
         "apply.refused.nothing": "Nichts ausgewählt — gib zuerst etwas frei.",
         "plan.kind.deleted": "Gelöscht",
         "plan.kind.deleted.help":
@@ -562,8 +576,8 @@ STRINGS: dict[str, dict[str, str]] = {
             "{limit} %",
         "brake.unreadable": "{count} Dateien waren beim Einlesen nicht lesbar",
         "brake.free_space": "Auf {disk} blieben danach weniger als {limit} GB frei",
-        "ready.no_master": "Dieser Satz hat keinen Master",
-        "ready.no_slave": "Dieser Satz hat keine Kopie",
+        "ready.no_master": "Dieser Auftrag hat keinen Master",
+        "ready.no_slave": "Dieser Auftrag hat keine Kopie",
         "ready.not_indexed": "{disk} wurde noch nicht eingelesen",
         "ready.unhashed": "{disk} hat noch {count} Dateien ohne Prüfsumme",
         "events.technical":
@@ -668,6 +682,19 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.eject": "Eject set {name}",
         "disks.eject_help":
             "Unmounts every disk of this set. Only then may they be unplugged.",
+        "sets.title": "Sets",
+        "sets.note":
+            "A set is one master and the copies that live off it. The same master disk "
+            "may take part in several sets - it is still only indexed once. A copy "
+            "always belongs to exactly one set.",
+        "sets.new_master": "Master",
+        "sets.new_name": "Name of the new set",
+        "sets.new_placeholder": "e.g. offsite",
+        "sets.create": "Create set",
+        "sets.created": "Set created. It still needs at least one copy.",
+        "sets.exists": "That set already exists.",
+        "sets.master_only":
+            "Only a master can open a set - a copy would have nothing to copy from.",
         "disks.pick_role": "Choose a role \u2026",
         "disks.no_role": "Choose a role first.",
         "claim.look_first":

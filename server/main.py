@@ -547,14 +547,17 @@ def disks_page(request: Request):
     # pull the plug. Both belong on the page that lists the disks.
     live: dict[int, dict] = {}
     mounted_sets: set[str] = set()
-    for name in sorted({row["set_name"] for row in registered}):
+    jobs = []
+    # Derived from the sets themselves, not from the disks: a disk names only
+    # one of its sets, so a second one built on the same master would be
+    # missing from a list made that way.
+    set_names = [row["name"] for row in db.all_sets()]
+    for name in set_names:
         try:
             status = {entry["fs_uuid"]: entry for entry in backend.status(name)}
         except BackendError:
             status = {}
-        for row in registered:
-            if row["set_name"] != name:
-                continue
+        for row in db.disks_of_set(name):
             entry = status.get(row["fs_uuid"], {})
             live[row["id"]] = {
                 "connected": bool(entry.get("connected")),
@@ -563,6 +566,13 @@ def disks_page(request: Request):
             }
             if entry.get("mounted"):
                 mounted_sets.add(name)
+        jobs.append({
+            "name": name,
+            "master": db.master_of_set(name),
+            "copies": db.slaves_of_set(name),
+            "split_enabled": bool(db.scalar(
+                "SELECT split_enabled FROM sets WHERE name = ?", (name,), 0)),
+        })
     return render("disks.html", request, connected=connected, error=error,
                   registered=registered,
                   show_all=show_all, hidden=hidden, excluded=excluded,
@@ -579,8 +589,10 @@ def disks_page(request: Request):
                   password_set=auth.password_is_set(),
                   can_demote=backend.can_demote(),
                   smart=db.smart_reports(),
-                  sets_in_use=sorted({row["set_name"] for row in registered}),
+                  sets_in_use=set_names,
                   live=live, mounted_sets=sorted(mounted_sets), attached=attached,
+                  jobs=jobs,
+                  masters=[d for d in registered if d["role"] == "master"],
                   indexed={row["id"]: scanner.scan_state(row["id"])["files"]
                            for row in registered})
 
@@ -621,11 +633,13 @@ def forget_whole_set(request: Request, set_name: str, confirm: str = Form("")):
     if manager.busy_with() is not None:
         return flash(request, "/disks", "forget.busy", "error")
 
-    for disk in db.disks_of_set(set_name):
-        try:
-            backend.unregister(disk["fs_uuid"])
-        except BackendError as exc:
-            return flash(request, "/disks", str(exc), "error")
+    # Only the set goes. Its disks stay registered - the master may well be
+    # carrying another set, and a copy that is suddenly unknown would have
+    # its index thrown away for nothing.
+    try:
+        backend.forget_set(set_name)
+    except BackendError as exc:
+        return flash(request, "/disks", str(exc), "error")
 
     removed = db.forget_set(set_name)
     db.log_event("info", f"set {set_name} forgotten: "
@@ -718,6 +732,33 @@ def check_smart(request: Request, fs_uuid: str = Form("")):
     if worst in ("warn", "unknown"):
         return flash(request, "/disks", "smart.found_warn", "warn")
     return flash(request, "/disks", "smart.found_ok", "ok")
+
+
+@app.post("/sets")
+def create_set(request: Request, name: str = Form(...), fs_uuid: str = Form(...)):
+    """Start another set from a disk that is already a master.
+
+    A master may back the same archive up in several directions, so this is
+    ordinary work. Only the master can open a set - a copy without one has
+    nothing to copy from.
+    """
+    name, fs_uuid = name.strip(), fs_uuid.strip()
+    disk = db.disk_by_uuid(fs_uuid)
+    if disk is None:
+        return flash(request, "/disks", "forget.unknown", "error")
+    if disk["role"] != "master":
+        return flash(request, "/disks", "sets.master_only", "error")
+    if db.one("SELECT name FROM sets WHERE name = ?", (name,)) is not None:
+        return flash(request, "/disks", "sets.exists", "error")
+
+    try:
+        backend.register(fs_uuid, "master", name, disk["display_name"])
+    except BackendError as exc:
+        return flash(request, "/disks", str(exc), "error")
+    refresh_registrations()
+    db.log_event("info", f"set {name} opened with master {disk['display_name']}",
+                 name, "disks")
+    return flash(request, "/disks", "sets.created", "ok")
 
 
 @app.post("/disks/ignore")

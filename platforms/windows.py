@@ -231,6 +231,12 @@ class WindowsBackend:
             return smart.interpret({"ok": False, "reason": "smart.not_connected"})
         return smart.interpret(smart.run_smartctl(f"/dev/pd{number}"))
 
+    def forget_set(self, set_name: str) -> dict:
+        for disk in self.registry.all():
+            if disk.get("set_name") == set_name:
+                self.registry.remove(disk["fs_uuid"])
+        return {"ok": True}
+
     def can_demote(self) -> bool:
         return True
 

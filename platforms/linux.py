@@ -132,6 +132,9 @@ class LinuxBackend:
     def demote_master(self, fs_uuid: str) -> dict:
         return call("demote", fs_uuid=fs_uuid)
 
+    def forget_set(self, set_name: str) -> dict:
+        return call("forget_set", set_name=set_name)
+
     def ignore(self, fs_uuid: str) -> dict:
         return call("ignore", fs_uuid=fs_uuid)
 

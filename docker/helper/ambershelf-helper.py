@@ -744,6 +744,9 @@ def handle(request: dict) -> dict:
     if command == "demote":
         return handle_demote(request)
 
+    if command == "forget_set":
+        return handle_forget_set(request)
+
     if command == "ignore":
         return handle_ignore(request)
 
@@ -961,6 +964,31 @@ def handle_unregister(request: dict) -> dict:
     log(f"unregistered {disk['display_name']!r} ({fs_uuid}, was {role}) "
         f"from set(s) {', '.join(touched) or 'none'}")
     return {"ok": True, "disk": {**disk, "role": role}, "sets": touched}
+
+
+def handle_forget_set(request: dict) -> dict:
+    """Dissolve one set. The disks in it stay registered.
+
+    Taking the disks with it would be wrong now that a master can serve
+    several sets: dropping one of them would pull the master out from under
+    the others, and put it on the retired list for good measure.
+    """
+    set_name = require_name(request.get("set_name"), "the set name")
+    config = load_config()
+    entry = find_set(config, set_name)
+    if entry is None:
+        raise RuntimeError(f"no set named {set_name!r}")
+
+    for disk in disks_of_set(config, set_name):
+        if is_mounted(mountpoint_for(disk)):
+            raise RuntimeError(
+                f"{disk['display_name']} is still mounted - eject the set first")
+
+    all_sets(config).remove(entry)
+    save_config(config)
+    log(f"set {set_name!r} dissolved - its {len(entry['copies']) + 1} disk(s) "
+        f"stay registered")
+    return {"ok": True, "set": entry}
 
 
 def handle_demote(request: dict) -> dict:
