@@ -94,7 +94,7 @@ STATIC_VERSION = static_version()
 def refresh_registrations() -> None:
     """Pull the host registry into the database. The host stays the authority."""
     try:
-        db.sync_disks_from_helper(backend.registrations())
+        db.sync_disks_from_helper(backend.registrations(), backend.sets())
     except BackendError as exc:
         db.log_event("warning", f"host helper unreachable: {exc}", None, "app")
 
@@ -540,7 +540,7 @@ def disks_page(request: Request):
             contents = backend.peek(looking_at)
         except BackendError as exc:
             contents = {"readable": False, "entries": [], "count": 0, "error": str(exc)}
-    registered = db.query("SELECT * FROM disks ORDER BY set_name, role DESC")
+    registered = db.registered_disks()
 
     # Whether a disk is connected and whether it is mounted are two different
     # questions, and the answer to the second decides whether it is safe to
@@ -702,7 +702,7 @@ def check_smart(request: Request, fs_uuid: str = Form("")):
     """Ask one disk, or every registered one, how it is doing."""
     fs_uuid = fs_uuid.strip()
     disks = ([db.disk_by_uuid(fs_uuid)] if fs_uuid
-             else db.query("SELECT * FROM disks ORDER BY set_name, role DESC"))
+             else db.registered_disks())
     disks = [disk for disk in disks if disk is not None]
     if not disks:
         return flash(request, "/disks", "forget.unknown", "error")
@@ -1044,7 +1044,7 @@ def run_page(request: Request, run_id: int):
         return RedirectResponse("/events", status_code=303)
     state = request.query_params.get("state")
     offset = int(request.query_params.get("offset") or 0)
-    slaves = {row["id"]: dict(row) for row in db.query("SELECT * FROM disks")}
+    slaves = {row["id"]: dict(row) for row in db.registered_disks()}
     return render("run.html", request, run=run, slaves=slaves, state=state, offset=offset,
                   items=apply_engine.run_items(run_id, state, offset=offset))
 

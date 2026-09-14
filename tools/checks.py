@@ -366,6 +366,78 @@ def demotion_is_the_only_way_out_of_a_master() -> None:
           not problems, "; ".join(problems))
 
 
+def one_disk_serves_many_sets_but_keeps_one_index() -> None:
+    """The point of the whole separation, checked where it is enforced.
+
+    A master may back up into several sets; a copy answers to one master; and
+    whatever a disk knows about itself is held once, however many sets use
+    it.
+    """
+    import sqlite3
+    from engine import db
+
+    db.initialise()
+    for table in ("members", "files", "sets"):
+        db.execute(f"DELETE FROM {table} WHERE 1=1")
+    db.execute("DELETE FROM disks WHERE fs_uuid LIKE 'CHECK-%'")
+
+    def disk(uuid, name):
+        return db.execute(
+            "INSERT INTO disks (fs_uuid, display_name, size_bytes, registered_at) "
+            "VALUES (?, ?, 0, '2026-01-01T00:00:00+00:00')", (uuid, name)).lastrowid
+
+    master = disk("CHECK-M", "Master")
+    first = disk("CHECK-A", "Kopie A")
+    second = disk("CHECK-B", "Kopie B")
+    db.set_members("erste", master, [first])
+    db.set_members("zweite", master, [second])
+
+    problems = []
+    if sorted(db.sets_of_disk(master)) != ["erste", "zweite"]:
+        problems.append("a master could not serve two sets")
+    if db.scalar("SELECT COUNT(*) FROM disks WHERE fs_uuid = 'CHECK-M'", (), 0) != 1:
+        problems.append("the master was stored twice")
+
+    # The index hangs off the disk, so both sets read the same one.
+    db.execute("INSERT INTO files (disk_id, path, size, mtime) VALUES (?, 'a.jpg', 1, 0)",
+               (master,))
+    for name in ("erste", "zweite"):
+        row = db.master_of_set(name)
+        if row is None or row["id"] != master:
+            problems.append(f"set {name} lost its master")
+        elif db.scalar("SELECT COUNT(*) FROM files WHERE disk_id = ?", (row["id"],), 0) != 1:
+            problems.append(f"set {name} does not see the shared index")
+
+    # A copy answers to one master, and the database is what says so.
+    try:
+        db.execute("INSERT INTO members (set_name, disk_id, role) "
+                   "VALUES ('zweite', ?, 'slave')", (first,))
+        problems.append("a copy could belong to two sets")
+    except sqlite3.IntegrityError:
+        pass
+    try:
+        db.execute("INSERT INTO members (set_name, disk_id, role) "
+                   "VALUES ('erste', ?, 'master')", (second,))
+        problems.append("a set could have two masters")
+    except sqlite3.IntegrityError:
+        pass
+
+    # Dropping one set leaves the master and its index alone, because the
+    # other set is still using both.
+    db.forget_set("erste")
+    if db.scalar("SELECT COUNT(*) FROM files WHERE disk_id = ?", (master,), 0) != 1:
+        problems.append("the shared index went with the set that was dropped")
+    if db.sets_of_disk(master) != ["zweite"]:
+        problems.append("the master did not survive one of its sets being dropped")
+
+    for table in ("members", "files", "sets"):
+        db.execute(f"DELETE FROM {table} WHERE 1=1")
+    db.execute("DELETE FROM disks WHERE fs_uuid LIKE 'CHECK-%'")
+
+    check("one disk serves many sets and is still indexed once",
+          not problems, "; ".join(problems[:3]))
+
+
 def a_restart_closes_what_it_interrupted() -> None:
     """Nothing may keep claiming to be running after the process is gone.
 
@@ -380,8 +452,8 @@ def a_restart_closes_what_it_interrupted() -> None:
         db.execute(f"DELETE FROM {table}")
     db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-ONLY'")
     disk_id = db.execute(
-        "INSERT INTO disks (fs_uuid, set_name, role, display_name, size_bytes, "
-        "registered_at) VALUES ('CHECK-ONLY', 'checks', 'master', 'M', 0, ?)",
+        "INSERT INTO disks (fs_uuid, display_name, size_bytes, registered_at) "
+        "VALUES ('CHECK-ONLY', 'M', 0, ?)",
         ("2026-01-01T00:00:00+00:00",)).lastrowid
 
     for state in ("running", "paused", "queued", "done"):
@@ -485,8 +557,8 @@ def corrected_rules_drop_their_verdicts() -> None:
     db.execute("DELETE FROM findings WHERE set_name = 'checks'")
     db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-ONLY'")
     disk_id = db.execute(
-        "INSERT INTO disks (fs_uuid, set_name, role, display_name, size_bytes, "
-        "registered_at) VALUES ('CHECK-ONLY', 'checks', 'master', 'M', 0, ?)",
+        "INSERT INTO disks (fs_uuid, display_name, size_bytes, registered_at) "
+        "VALUES ('CHECK-ONLY', 'M', 0, ?)",
         ("2026-01-01T00:00:00+00:00",)).lastrowid
     for path, health in (("a.mts", "header_mismatch"), ("b.jpg", "ok"),
                          ("c.txt", "text_garbled")):
@@ -675,6 +747,7 @@ def main() -> int:
     system_partitions_are_recognised()
     demotion_is_the_only_way_out_of_a_master()
     smart_values_are_judged()
+    one_disk_serves_many_sets_but_keeps_one_index()
     a_restart_closes_what_it_interrupted()
     corrected_rules_drop_their_verdicts()
     a_message_is_shown_once_and_then_gone()

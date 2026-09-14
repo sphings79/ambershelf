@@ -79,6 +79,28 @@ class MountReport:
     failed: list[dict] = field(default_factory=list)
 
 
+def sets_from_registrations(entries: list[dict]) -> list[dict]:
+    """Group flat registrations into sets.
+
+    Only the host helper keeps sets as a thing of their own. On a desktop the
+    registry is a flat list, so the sets are read back out of it - which
+    works because there each disk still belongs to exactly one.
+    """
+    grouped: dict[str, dict] = {}
+    for entry in entries:
+        name = entry.get("set_name")
+        if not name:
+            continue
+        found = grouped.setdefault(
+            name, {"name": name, "master": None, "copies": [],
+                   "created_at": entry.get("registered_at")})
+        if entry.get("role") == "master":
+            found["master"] = entry["fs_uuid"]
+        else:
+            found["copies"].append(entry["fs_uuid"])
+    return [s for s in grouped.values() if s["master"]]
+
+
 class BackendError(RuntimeError):
     """Anything the platform layer refuses or cannot do."""
 
@@ -112,6 +134,10 @@ class Backend(Protocol):
     def list_volumes(self) -> list[Volume]: ...
 
     def registrations(self) -> list[dict]: ...
+
+    def sets(self) -> list[dict]:
+        """Which sets exist and who is in them."""
+        return sets_from_registrations(self.registrations())
 
     def register(self, fs_uuid: str, role: str, set_name: str,
                  display_name: str) -> dict: ...

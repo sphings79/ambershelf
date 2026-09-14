@@ -18,6 +18,9 @@ from engine import config
 _local = threading.local()
 
 SCHEMA = """
+-- A disk, and nothing about who it works with. One row per physical disk,
+-- so the index, the scans and the SMART readings behind it are shared by
+-- every set it takes part in rather than held twice.
 CREATE TABLE IF NOT EXISTS disks (
     id            INTEGER PRIMARY KEY,
     fs_uuid       TEXT NOT NULL UNIQUE,
@@ -26,12 +29,24 @@ CREATE TABLE IF NOT EXISTS disks (
     model         TEXT,
     size_bytes    INTEGER NOT NULL DEFAULT 0,
     fs_type       TEXT,
-    role          TEXT NOT NULL CHECK (role IN ('master', 'slave')),
-    set_name      TEXT NOT NULL,
     display_name  TEXT NOT NULL,
     registered_at TEXT NOT NULL,
     last_seen_at  TEXT
 );
+
+-- Who belongs to which set, and as what. A master may serve several sets;
+-- a copy belongs to exactly one. Both rules are held by the database rather
+-- than by whoever remembers to check.
+CREATE TABLE IF NOT EXISTS members (
+    set_name TEXT NOT NULL REFERENCES sets(name) ON DELETE CASCADE,
+    disk_id  INTEGER NOT NULL REFERENCES disks(id) ON DELETE CASCADE,
+    role     TEXT NOT NULL CHECK (role IN ('master', 'slave')),
+    PRIMARY KEY (set_name, disk_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_master ON members (set_name)
+    WHERE role = 'master';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_owner ON members (disk_id)
+    WHERE role = 'slave';
 
 CREATE TABLE IF NOT EXISTS sets (
     name          TEXT PRIMARY KEY,
@@ -260,6 +275,35 @@ MIGRATIONS = [
 ]
 
 
+def split_disks_from_sets(connection: sqlite3.Connection) -> None:
+    """Move the role and the set out of the disk row, into their own table.
+
+    Before this, a disk carried its role and its set, so it could be in one
+    set with one role - which is why the same master could not serve two
+    sets. Ids are kept, so everything hanging off disk_id (the index, the
+    scans, the SMART readings) simply carries on.
+    """
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(disks)")}
+    if not columns or "set_name" not in columns:
+        return
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS members (
+            set_name TEXT NOT NULL,
+            disk_id  INTEGER NOT NULL,
+            role     TEXT NOT NULL CHECK (role IN ('master', 'slave')),
+            PRIMARY KEY (set_name, disk_id)
+        )""")
+    connection.execute(
+        "INSERT OR IGNORE INTO members (set_name, disk_id, role) "
+        "SELECT set_name, id, role FROM disks")
+    moved = connection.total_changes
+    connection.execute("ALTER TABLE disks DROP COLUMN role")
+    connection.execute("ALTER TABLE disks DROP COLUMN set_name")
+    print(f"[ambershelf] disks and sets separated: {moved} membership(s) moved",
+          flush=True)
+
+
 def migrate(connection: sqlite3.Connection) -> None:
     """Add columns that older databases are missing.
 
@@ -274,6 +318,7 @@ def migrate(connection: sqlite3.Connection) -> None:
             continue
         if column not in existing:
             connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+    split_disks_from_sets(connection)
 
 
 def initialise() -> None:
@@ -349,45 +394,69 @@ def log_event(level: str, message: str, set_name: str | None = None,
 
 # ------------------------------------------------------------------- disks --
 
-def sync_disks_from_helper(registrations: list[dict]) -> None:
+def sync_disks_from_helper(registrations: list[dict], sets: list[dict] | None = None
+                           ) -> None:
     """Mirror the host registry into the database.
 
-    The host configuration is the authority for roles - this only copies it
-    so the interface can join against it. A role that changed on the host
-    wins here too.
+    The host configuration is the authority for who belongs where; this only
+    copies it so the interface can join against it. A disk removed there is
+    dropped here, and its index with it - it is worthless without the disk.
     """
     connection = connect()
     for entry in registrations:
         connection.execute(
             """
             INSERT INTO disks (fs_uuid, serial, label, model, size_bytes, fs_type,
-                               role, set_name, display_name, registered_at, last_seen_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                               display_name, registered_at, last_seen_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (fs_uuid) DO UPDATE SET
                 serial       = excluded.serial,
                 label        = excluded.label,
                 model        = excluded.model,
                 size_bytes   = excluded.size_bytes,
                 fs_type      = excluded.fs_type,
-                role         = excluded.role,
-                set_name     = excluded.set_name,
                 display_name = excluded.display_name
             """,
             (entry["fs_uuid"], entry.get("serial"), entry.get("label"), entry.get("model"),
-             entry.get("size") or 0, entry.get("fs_type"), entry["role"], entry["set_name"],
-             entry["display_name"], entry.get("registered_at") or now(),
-             entry.get("last_seen_at")),
-        )
-        connection.execute(
-            "INSERT OR IGNORE INTO sets (name, created_at) VALUES (?, ?)",
-            (entry["set_name"], now()),
+             entry.get("size") or 0, entry.get("fs_type"), entry["display_name"],
+             entry.get("registered_at") or now(), entry.get("last_seen_at")),
         )
 
     known = {entry["fs_uuid"] for entry in registrations}
+    ids = {}
     for row in query("SELECT id, fs_uuid FROM disks"):
         if row["fs_uuid"] not in known:
-            # Removed on the host - drop the index with it, it is worthless now.
             connection.execute("DELETE FROM disks WHERE id = ?", (row["id"],))
+        else:
+            ids[row["fs_uuid"]] = row["id"]
+
+    if sets is None:
+        return
+
+    # Memberships are replaced wholesale rather than reconciled: the host
+    # file is short, it is the authority, and a half-applied change here
+    # would be a set that disagrees with the machine it runs on.
+    wanted = {entry["name"] for entry in sets}
+    for row in query("SELECT name FROM sets"):
+        if row["name"] not in wanted:
+            connection.execute("DELETE FROM sets WHERE name = ?", (row["name"],))
+    for entry in sets:
+        connection.execute(
+            "INSERT OR IGNORE INTO sets (name, created_at) VALUES (?, ?)",
+            (entry["name"], entry.get("created_at") or now()))
+        connection.execute("DELETE FROM members WHERE set_name = ?", (entry["name"],))
+        master = ids.get(entry.get("master") or "")
+        if master is None:
+            continue
+        connection.execute(
+            "INSERT INTO members (set_name, disk_id, role) VALUES (?, ?, 'master')",
+            (entry["name"], master))
+        for fs_uuid in entry.get("copies") or []:
+            disk_id = ids.get(fs_uuid)
+            if disk_id is not None:
+                connection.execute(
+                    "INSERT INTO members (set_name, disk_id, role) VALUES (?, ?, 'slave')",
+                    (entry["name"], disk_id))
 
 
 def disk_by_uuid(fs_uuid: str) -> sqlite3.Row | None:
@@ -398,22 +467,69 @@ def disk_by_id(disk_id: int) -> sqlite3.Row | None:
     return one("SELECT * FROM disks WHERE id = ?", (disk_id,))
 
 
+#: Reading a disk together with what one set makes of it. The role and the
+#: set come back as columns, so everything that only ever deals with one set
+#: reads exactly as it did when they lived in the disk row.
+MEMBER_QUERY = """
+    SELECT disks.*, members.role AS role, members.set_name AS set_name
+      FROM disks JOIN members ON members.disk_id = disks.id
+"""
+
+
 def disks_of_set(set_name: str) -> list[sqlite3.Row]:
-    return query("SELECT * FROM disks WHERE set_name = ? "
-                 "ORDER BY role = 'slave', display_name", (set_name,))
+    return query(MEMBER_QUERY + " WHERE members.set_name = ? "
+                 "ORDER BY members.role = 'slave', disks.display_name", (set_name,))
 
 
 def master_of_set(set_name: str) -> sqlite3.Row | None:
-    return one("SELECT * FROM disks WHERE set_name = ? AND role = 'master'", (set_name,))
+    return one(MEMBER_QUERY + " WHERE members.set_name = ? AND members.role = 'master'",
+               (set_name,))
 
 
 def slaves_of_set(set_name: str) -> list[sqlite3.Row]:
-    return query("SELECT * FROM disks WHERE set_name = ? AND role = 'slave' "
-                 "ORDER BY display_name", (set_name,))
+    return query(MEMBER_QUERY + " WHERE members.set_name = ? AND members.role = 'slave' "
+                 "ORDER BY disks.display_name", (set_name,))
+
+
+def sets_of_disk(disk_id: int) -> list[str]:
+    """Every set this disk takes part in - a master may serve several."""
+    return [row["set_name"] for row in query(
+        "SELECT set_name FROM members WHERE disk_id = ? ORDER BY set_name", (disk_id,))]
+
+
+def role_of_disk(disk_id: int) -> str | None:
+    """What this disk is, anywhere. It cannot be a master here and a copy there."""
+    return scalar("SELECT role FROM members WHERE disk_id = ? LIMIT 1", (disk_id,), None)
+
+
+def registered_disks() -> list[sqlite3.Row]:
+    """Every registered disk once, with its role and its sets attached."""
+    return query("""
+        SELECT disks.*,
+               (SELECT role FROM members WHERE members.disk_id = disks.id LIMIT 1) AS role,
+               (SELECT group_concat(set_name, ', ') FROM members
+                 WHERE members.disk_id = disks.id) AS set_names,
+               (SELECT set_name FROM members WHERE members.disk_id = disks.id LIMIT 1)
+                 AS set_name
+          FROM disks
+      ORDER BY role = 'slave', display_name
+    """)
 
 
 def all_sets() -> list[sqlite3.Row]:
     return query("SELECT * FROM sets ORDER BY name")
+
+
+def set_members(set_name: str, master_id: int, slave_ids: list[int]) -> None:
+    """Write down who belongs to a set, replacing whatever was there."""
+    execute("INSERT OR IGNORE INTO sets (name, created_at) VALUES (?, ?)",
+            (set_name, now()))
+    execute("DELETE FROM members WHERE set_name = ?", (set_name,))
+    execute("INSERT INTO members (set_name, disk_id, role) VALUES (?, ?, 'master')",
+            (set_name, master_id))
+    for disk_id in slave_ids:
+        execute("INSERT INTO members (set_name, disk_id, role) VALUES (?, ?, 'slave')",
+                (set_name, disk_id))
 
 
 # ------------------------------------------------------------------- runs --
@@ -534,6 +650,7 @@ def forget_disk(disk_id: int) -> dict:
         ("synced", "slave_disk_id = ?", (disk_id,)),
         ("decisions", "disk_id = ?", (disk_id,)),
         ("findings", "disk_id = ?", (disk_id,)),
+        ("members", "disk_id = ?", (disk_id,)),
         ("smart", "disk_id = ?", (disk_id,)),
         ("scans", "disk_id = ?", (disk_id,)),
         ("files", "disk_id = ?", (disk_id,)),
@@ -627,11 +744,20 @@ def smart_reports() -> dict[int, dict]:
 
 
 def forget_set(set_name: str) -> dict:
-    """Drop a whole set: every disk in it, and everything about the set."""
+    """Drop a set, and anything that was only ever about this set.
+
+    A disk is no longer dropped along with it: the same master may serve
+    another set, and its index belongs to the disk rather than to any set.
+    Only a disk that is left in no set at all is forgotten.
+    """
     removed: dict[str, int] = {}
-    for row in query("SELECT id FROM disks WHERE set_name = ?", (set_name,)):
-        for table, count in forget_disk(row["id"]).items():
-            removed[table] = removed.get(table, 0) + count
+    members = [row["disk_id"] for row in
+               query("SELECT disk_id FROM members WHERE set_name = ?", (set_name,))]
+    execute("DELETE FROM members WHERE set_name = ?", (set_name,))
+    for disk_id in members:
+        if not sets_of_disk(disk_id):
+            for table, count in forget_disk(disk_id).items():
+                removed[table] = removed.get(table, 0) + count
     for table in ("plan_items", "plans", "run_items", "runs", "assignments",
                   "findings", "tree_nodes", "synced", "decisions", "sets"):
         column = "name" if table == "sets" else "set_name"
@@ -646,5 +772,5 @@ def forget_set(set_name: str) -> dict:
 
 
 def set_is_empty(set_name: str) -> bool:
-    return not scalar("SELECT 1 FROM disks WHERE set_name = ? LIMIT 1",
+    return not scalar("SELECT 1 FROM members WHERE set_name = ? LIMIT 1",
                       (set_name,), 0)

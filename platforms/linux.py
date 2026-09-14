@@ -108,6 +108,10 @@ class LinuxBackend:
     def registrations(self) -> list[dict]:
         return call("list_registrations")["disks"]
 
+    def sets(self) -> list[dict]:
+        """Which sets exist and who is in them, as the host has it."""
+        return call("list_registrations").get("sets", [])
+
     def register(self, fs_uuid: str, role: str, set_name: str,
                  display_name: str) -> dict:
         return call("register", fs_uuid=fs_uuid, role=role,

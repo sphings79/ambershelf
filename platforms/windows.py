@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 
 from platforms import smart
-from platforms.base import BackendError, MountReport, Volume
+from platforms.base import BackendError, MountReport, Volume, sets_from_registrations
 from platforms.registry import JsonRegistry
 
 TIMEOUT = 60
@@ -193,6 +193,9 @@ class WindowsBackend:
 
     def registrations(self) -> list[dict]:
         return self.registry.all()
+
+    def sets(self) -> list[dict]:
+        return sets_from_registrations(self.registry.all())
 
     def register(self, fs_uuid: str, role: str, set_name: str,
                  display_name: str) -> dict:
