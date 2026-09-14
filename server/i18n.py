@@ -85,6 +85,20 @@ STRINGS: dict[str, dict[str, str]] = {
             "Einen Master gibst du stattdessen ganz auf (\u201eMaster aufgeben\u201c), danach "
             "ist die Platte unbekannt und du kannst sie neu registrieren, in welcher "
             "Rolle du willst.",
+        "disks.pick_role": "Rolle wählen …",
+        "disks.no_role": "Bitte erst eine Rolle wählen.",
+        "claim.look_first":
+            "Auf dieser Platte liegen schon Daten. Sieh nach, bevor du sie als Kopie einträgst.",
+        "claim.title": "{name} ist nicht leer",
+        "claim.body":
+            "Als Kopie von „{set}\u201c wird diese Platte schreibend eingehängt, und beim "
+            "Abgleich landet der Bestand des Masters darauf. Was hier liegt und nicht zum "
+            "Master gehört, meldet AmberShelf zwar, aber verlassen solltest du dich darauf "
+            "nicht — trage eine Platte nur dann als Kopie ein, wenn du weißt, was darauf ist.",
+        "claim.contents": "Darauf liegen {count} Einträge, unter anderem:",
+        "claim.understood":
+            "Ich weiß, was auf dieser Platte liegt, und will sie als Kopie verwenden.",
+        "claim.do": "Trotzdem als Kopie eintragen",
         "disks.register_help":
             "Der Master wird immer nur lesend eingehängt. Prüfe die Rolle, bevor "
             "du registrierst — ändern lässt sie sich danach nur noch am Host.",
@@ -614,6 +628,20 @@ STRINGS: dict[str, dict[str, str]] = {
             "disk does not - there is no path for it anywhere. Instead you give a "
             "master up entirely (\u201cGive up master\u201d); the disk is then unknown "
             "and you can register it again in whatever role you want.",
+        "disks.pick_role": "Choose a role \u2026",
+        "disks.no_role": "Choose a role first.",
+        "claim.look_first":
+            "There is already something on this disk. Have a look before registering it "
+            "as a copy.",
+        "claim.title": "{name} is not empty",
+        "claim.body":
+            "As a copy of \u201c{set}\u201d this disk is mounted writable, and a sync puts "
+            "the master's archive on it. AmberShelf reports what is here and does not "
+            "belong to the master, but do not lean on that - only register a disk as a "
+            "copy when you know what is on it.",
+        "claim.contents": "It holds {count} entries, among them:",
+        "claim.understood": "I know what is on this disk and want to use it as a copy.",
+        "claim.do": "Register as a copy anyway",
         "disks.register_help":
             "A master is always mounted read-only. Check the role before registering - "
             "afterwards it can only be changed on the host.",

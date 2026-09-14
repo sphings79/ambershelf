@@ -122,3 +122,22 @@
     }
   });
 })();
+
+// ------------------------------------------------------------- registering
+// Nothing can be registered until a role has been chosen, and only then does
+// the button start looking like one worth pressing.
+(function () {
+  Array.prototype.forEach.call(document.querySelectorAll(".register-form"), function (form) {
+    var role = form.querySelector("select[name=role]");
+    var button = form.querySelector("button");
+    if (!role || !button) { return; }
+    function sync() {
+      var chosen = role.value !== "";
+      button.disabled = !chosen;
+      button.classList.toggle("primary", chosen);
+      button.classList.toggle("quiet", !chosen);
+    }
+    role.addEventListener("change", sync);
+    sync();
+  });
+})();

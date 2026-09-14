@@ -525,17 +525,21 @@ def disks_page(request: Request):
     # Looking inside the disk about to be erased is a better warning than any
     # wording, so it is fetched only for the one being confirmed.
     formatting = request.query_params.get("format")
+    claiming = request.query_params.get("claim")
     contents = None
-    if formatting and backend.can_format():
+    looking_at = formatting if formatting and backend.can_format() else claiming
+    if looking_at:
         try:
-            contents = backend.peek(formatting)
+            contents = backend.peek(looking_at)
         except BackendError as exc:
             contents = {"readable": False, "entries": [], "count": 0, "error": str(exc)}
     registered = db.query("SELECT * FROM disks ORDER BY set_name, role DESC")
     return render("disks.html", request, connected=connected, error=error,
                   registered=registered,
                   show_all=show_all, hidden=hidden, excluded=excluded,
-                  formatting=formatting, contents=contents,
+                  formatting=formatting, contents=contents, claiming=claiming,
+                  claim={"display_name": request.query_params.get("name", ""),
+                         "set_name": request.query_params.get("set", "")},
                   can_format=backend.can_format(),
                   system_count=sum(1 for v in volumes if v["system"]),
                   ignored_count=sum(1 for v in volumes if v["ignored"]),
@@ -742,10 +746,32 @@ async def format_disk(request: Request):
 
 
 @app.post("/disks/register")
-def register_disk(request: Request, fs_uuid: str = Form(...), role: str = Form(...),
-                  set_name: str = Form(...), display_name: str = Form(...)):
+def register_disk(request: Request, fs_uuid: str = Form(...), role: str = Form(""),
+                  set_name: str = Form(...), display_name: str = Form(...),
+                  token: str = Form(""), understood: str = Form("")):
+    """Add a disk to a set.
+
+    Registering an empty disk as a copy is everyday work. Registering a full
+    one is almost always a mistake, and an expensive one: a copy is mounted
+    writable and gets the master written over it. So a disk with something on
+    it has to be confirmed against its own contents first.
+    """
+    role = role.strip()
+    if role not in ("master", "slave"):
+        return flash(request, "/disks", "disks.no_role", "error")
+
+    if role == "slave" and understood != "1" and token:
+        try:
+            contents = backend.peek(token)
+        except BackendError:
+            contents = {"readable": False, "count": 0}
+        if contents.get("count"):
+            return flash(request, f"/disks?claim={quote(token)}"
+                                  f"&name={quote(display_name)}&set={quote(set_name)}",
+                         "claim.look_first", "warn")
+
     try:
-        backend.register(fs_uuid.strip(), role.strip(), set_name.strip(),
+        backend.register(fs_uuid.strip(), role, set_name.strip(),
                          display_name.strip())
         refresh_registrations()
         db.log_event("info", f"{display_name} registered as {role} of {set_name}",

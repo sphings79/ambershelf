@@ -98,18 +98,24 @@
                 <div class="faint small">{{ t('role.' ~ d.registration.role) }} ·
                   {{ d.registration.set_name }}</div>
               {% elif d.fs_uuid %}
-                <form class="actions" method="post" action="/disks/register">
+                {# The role starts empty on purpose. Pre-selected it read like
+                   a statement of fact, and one click on a prominent button
+                   was all it took to turn somebody's archive into a copy
+                   that gets written over. #}
+                <form class="actions register-form" method="post" action="/disks/register">
                   <input type="hidden" name="fs_uuid" value="{{ d.fs_uuid }}">
+                  <input type="hidden" name="token" value="{{ d.token }}">
                   <input name="display_name" placeholder="{{ t('disks.display_name') }}"
                          value="{{ d.name }}" size="12" maxlength="63" required>
                   <input name="set_name" placeholder="{{ t('disks.set_name') }}"
                          value="{{ registered[0]['set_name'] if registered else 'fotoarchiv' }}"
                          size="10" required>
-                  <select name="role">
+                  <select name="role" required>
+                    <option value="" selected>{{ t('disks.pick_role') }}</option>
                     <option value="slave">{{ t('role.slave') }}</option>
                     <option value="master">{{ t('role.master') }}</option>
                   </select>
-                  <button class="primary">{{ t('disks.register') }}</button>
+                  <button class="quiet" disabled>{{ t('disks.register') }}</button>
                 </form>
               {% else %}
                 <span class="faint">—</span>
@@ -129,6 +135,43 @@
               {% endif %}
             </td>
           </tr>
+          {% if claiming == d.token %}
+          <tr class="format-row">
+            <td colspan="6">
+              <form method="post" action="/disks/register">
+                <input type="hidden" name="fs_uuid" value="{{ d.fs_uuid }}">
+                <input type="hidden" name="token" value="{{ d.token }}">
+                <input type="hidden" name="display_name" value="{{ claim.display_name }}">
+                <input type="hidden" name="set_name" value="{{ claim.set_name }}">
+                <input type="hidden" name="role" value="slave">
+                <div class="note error">
+                  <span class="note-icon">{{ ui.icon('alert', 18) }}</span>
+                  <div>
+                    <strong>{{ t('claim.title', name=claim.display_name) }}</strong>
+                    <p>{{ t('claim.body', set=claim.set_name) }}</p>
+                    {% if contents and contents.readable %}
+                      <p class="small">
+                        <strong>{{ t('claim.contents', count=contents.count) }}</strong><br>
+                        <span class="mono">{{ contents.entries|join(' · ') }}{% if contents.count > contents.entries|length %} …{% endif %}</span>
+                      </p>
+                    {% else %}
+                      <p class="small">{{ t('format.contents_unreadable') }}</p>
+                    {% endif %}
+                  </div>
+                </div>
+                <label class="check" style="margin-bottom:8px">
+                  <input type="checkbox" name="understood" value="1" required>
+                  {{ t('claim.understood') }}
+                </label>
+                <div class="actions">
+                  <button class="danger">{{ ui.icon('unlock', 15) }} {{ t('claim.do') }}</button>
+                  <a class="button quiet" href="/disks">{{ t('common.cancel') }}</a>
+                </div>
+              </form>
+            </td>
+          </tr>
+          {% endif %}
+
           {% if formatting == d.token %}
           <tr class="format-row">
             <td colspan="6">
