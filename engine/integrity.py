@@ -35,9 +35,28 @@ HEADER_BYTES = 512
 OK = "ok"
 NO_CHECK = "no_check"
 HEADER_MISMATCH = "header_mismatch"
+#: Intact, just not what its name claims - a PNG called .bmp. Worth saying,
+#: not worth worrying about, so this is never counted as damage.
+WRONG_EXTENSION = "wrong_extension"
 TEXT_GARBLED = "text_garbled"
 EMPTY = "empty"
 UNREADABLE = "unreadable"
+
+#: Byte order marks. A text file in UTF-16 is perfectly ordinary text; it
+#: simply is not readable one byte at a time, which is what the printable
+#: check does. Windows writes them - BitLocker recovery keys, for one.
+BYTE_ORDER_MARKS = (
+    (b"\xff\xfe\x00\x00", "utf-32-le"), (b"\x00\x00\xfe\xff", "utf-32-be"),
+    (b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be"),
+    (b"\xef\xbb\xbf", "utf-8-sig"),
+)
+
+#: macOS writes one of these next to a file whenever it stores something the
+#: filesystem cannot hold itself. They are not documents, carry the name of
+#: a document, and there can be tens of thousands of them on a disk that has
+#: ever been plugged into a Mac.
+APPLEDOUBLE_PREFIX = "._"
+APPLEDOUBLE_MAGIC = b"\x00\x05\x16\x07"
 
 #: (offset, magic) pairs. A file passes if any pair matches.
 #: Bumped whenever a signature changes. A verdict is only as good as the
@@ -45,7 +64,7 @@ UNREADABLE = "unreadable"
 #: already stored is thrown away and made again. Re-reading half a kilobyte
 #: per file is cheap; leaving 709 holiday videos marked as damaged because
 #: the table was wrong is not.
-RULES_VERSION = 2
+RULES_VERSION = 3
 
 SIGNATURES: dict[str, tuple[tuple[int, bytes], ...]] = {
     "jpg":  ((0, b"\xff\xd8\xff"),),
@@ -142,10 +161,44 @@ def extension_of(name: str) -> str:
     return name.rsplit(".", 1)[-1].lower() if "." in name else ""
 
 
+def looks_like(header: bytes) -> str | None:
+    """Which known kind of file does this actually start like?"""
+    for extension, signatures in SIGNATURES.items():
+        for offset, magic in signatures:
+            if header[offset:offset + len(magic)] == magic:
+                return extension
+    return None
+
+
+def reads_as_text(text: str) -> bool:
+    """Is this actually something a person could read?
+
+    Decoding alone proves nothing: NUL bytes are valid UTF-8 and half of
+    UTF-16 decodes to control characters. What matters is whether the
+    characters that came out are ones text is made of.
+    """
+    if not text:
+        return False
+    readable = sum(1 for character in text
+                   if character.isprintable() or character in "\t\n\r")
+    return readable >= len(text) * 0.9
+
+
+def is_appledouble(name: str, header: bytes) -> bool:
+    return name.startswith(APPLEDOUBLE_PREFIX) and header[:4] == APPLEDOUBLE_MAGIC
+
+
 def check_header(name: str, header: bytes) -> str:
     """Does the content match what the name claims? Reads nothing itself."""
     if not header:
         return EMPTY
+
+    # "._urlaub.jpg" is not a damaged holiday photo, it is the sidecar macOS
+    # wrote next to one. Judging it by the extension it borrowed would
+    # report every one of them as broken.
+    if is_appledouble(name, header):
+        return NO_CHECK
+
     extension = extension_of(name)
     signatures = SIGNATURES.get(extension)
 
@@ -153,13 +206,26 @@ def check_header(name: str, header: bytes) -> str:
         for offset, magic in signatures:
             if header[offset:offset + len(magic)] == magic:
                 return OK
-        return HEADER_MISMATCH
+        # Content that is recognisably some other kind of file is intact -
+        # somebody named it wrong, or a program did. Encrypted or shredded
+        # content matches nothing at all, and that is what stays a mismatch.
+        return WRONG_EXTENSION if looks_like(header) else HEADER_MISMATCH
 
     if extension in TEXT_EXTENSIONS:
         sample = header[:HEADER_BYTES]
+        # A byte order mark says which encoding to read it as. The window is
+        # cut at 512 bytes, so the last character may be halved - errors are
+        # ignored rather than held against the file.
+        for mark, encoding in BYTE_ORDER_MARKS:
+            if sample.startswith(mark):
+                # The mark itself decodes to a zero-width character, which
+                # is not printable and would drag the count down.
+                text = sample.decode(encoding, "ignore").lstrip("\ufeff")
+                return OK if reads_as_text(text) else TEXT_GARBLED
         try:
-            sample.decode("utf-8")
-            return OK
+            # Decoding is not the question - a run of NUL bytes is valid
+            # UTF-8 and is not text. What it says once decoded is.
+            return OK if reads_as_text(sample.decode("utf-8")) else TEXT_GARBLED
         except UnicodeDecodeError:
             pass
         # Not valid UTF-8 - still fine if it reads as plain single-byte text.

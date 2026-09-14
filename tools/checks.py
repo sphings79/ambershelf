@@ -140,6 +140,24 @@ def integrity_recognises_files() -> None:
         ("notiz.txt", bytes(range(0, 200)), "text_garbled"),
         ("unbekannt.xyz", b"\x00\x01\x02", "no_check"),
         ("leer.jpg", b"", "empty"),
+        # Nero writes its cover images with a .bmp extension whatever they
+        # really are. Intact, only misnamed - and never damage.
+        ("cover_1.bmp", b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR", "wrong_extension"),
+        ("cover_11.bmp", b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01", "wrong_extension"),
+        # Encrypted content matches nothing at all and stays a mismatch.
+        ("urlaub.jpg", b"\x00\x00\x00\x87\x02x\x9c\xe3b``f\xe0vI,", "header_mismatch"),
+        # macOS sidecars borrow the name of the file they belong to.
+        ("._urlaub.jpg", b"\x00\x05\x16\x07\x00\x02\x00\x00Mac OS X", "no_check"),
+        ("._notreally.jpg", b"ENCRYPTED!!!!!!!\x00\x01\x02", "header_mismatch"),
+        # BitLocker recovery keys are UTF-16, which is text, not garbage.
+        ("key.TXT", "\ufeffBitLocker\u2011Wiederherstellungsschl\u00fcssel".encode("utf-16-le"),
+         "ok"),
+        ("key.txt", "\ufeffPasswort".encode("utf-16-be"), "ok"),
+        ("kaputt.txt", b"\xff\xfe" + b"\x00" * 200, "text_garbled"),
+        ("steuerzeichen.txt", b"\xff\xfe" + b"\x01\x00\x02\x00\x03\x00" * 30,
+         "text_garbled"),
+        # Valid UTF-8 is not the same as readable - a run of NUL decodes fine.
+        ("genullt.txt", b"\x00" * 300, "text_garbled"),
     ]
     names = [
         ("HOW_TO_DECRYPT.txt", "ransom_note"),

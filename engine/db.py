@@ -78,8 +78,9 @@ CREATE TABLE IF NOT EXISTS files (
     sha256    TEXT,
     hashed_at TEXT,
     seen_scan INTEGER,
-    -- What the integrity check made of it: ok, no_check, header_mismatch,
-    -- text_garbled, empty, unreadable. NULL means not looked at yet.
+    -- What the integrity check made of it: ok, no_check, wrong_extension,
+    -- header_mismatch, text_garbled, empty, unreadable. NULL means not
+    -- looked at yet. Only the last three count as damage.
     health    TEXT,
     PRIMARY KEY (disk_id, path)
 ) WITHOUT ROWID;
