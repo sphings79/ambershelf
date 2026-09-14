@@ -107,6 +107,17 @@ STRINGS: dict[str, dict[str, str]] = {
             "Hängt alle Platten dieses Auftrags aus. Erst danach dürfen sie abgezogen werden. Ein Master, den ein anderer Auftrag noch benutzt, bleibt eingehängt.",
         "umount.kept":
             "Ausgehängt. Eingehängt bleibt, was ein anderer Auftrag noch liest: {names}",
+        "rehash.all_warning": "{count} Dateien, {size} — alles wird neu gelesen",
+        "rehash.all_help":
+            "Verwirft jede gespeicherte Prüfsumme dieser Platte. Beim nächsten Einlesen "
+            "wird jede Datei vollständig gelesen und neu geprüfsummt. Bei einer großen "
+            "Platte sind das Stunden, und zurückholen lässt es sich nicht. Willst du nur "
+            "einzelne Dateien neu prüfen, nimm den Punkt darunter.",
+        "rehash.all_understood": "Ich weiß, dass die ganze Platte neu gelesen werden muss.",
+        "rehash.all_do": "Alle Prüfsummen verwerfen",
+        "rehash.all_done": "{count} Prüfsummen verworfen. Die Platte wird beim nächsten "
+                           "Einlesen vollständig gelesen.",
+        "rehash.not_understood": "Erst den Hinweis bestätigen.",
         "rehash.some": "Nur einzelne Dateien neu prüfen …",
         "rehash.some_help":
             "Ein Pfad je Zeile, relativ zur Wurzel der Platte. Nötig, wenn du eine Datei "
@@ -700,6 +711,16 @@ STRINGS: dict[str, dict[str, str]] = {
             "Unmounts every disk of this set. Only then may they be unplugged.",
         "umount.kept":
             "Unmounted. Still mounted because another set is reading it: {names}",
+        "rehash.all_warning": "{count} files, {size} - all of it read again",
+        "rehash.all_help":
+            "Drops every stored checksum of this disk. The next index run reads every "
+            "file in full and hashes it again. On a large disk that is hours, and there "
+            "is no way back. To re-check only a few files, use the entry below.",
+        "rehash.all_understood": "I know the whole disk has to be read again.",
+        "rehash.all_do": "Drop every checksum",
+        "rehash.all_done": "{count} checksums dropped. The disk is read in full on the "
+                           "next index run.",
+        "rehash.not_understood": "Acknowledge the warning first.",
         "rehash.some": "Re-check only named files \u2026",
         "rehash.some_help":
             "One path per line, relative to the root of the disk. Needed when you have "

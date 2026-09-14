@@ -643,6 +643,55 @@ def corrected_rules_drop_their_verdicts() -> None:
           not problems, "; ".join(problems[:3]))
 
 
+def throwing_away_hashes_takes_a_confirmation() -> None:
+    """Hours of reading must not hang on one click.
+
+    Dropping the hashes of a whole disk is not destructive - no file is
+    touched - but it costs a full re-read, and nothing brings them back.
+    """
+    sys.path.insert(0, str(ROOT))
+    try:
+        from server import main
+    except ImportError:
+        notes.append("fastapi is missing - the rehash check was skipped")
+        return
+    from engine import db
+
+    class Request:
+        cookies: dict = {}
+        headers: dict = {}
+        url = type("U", (), {"scheme": "http"})()
+
+    db.initialise()
+    db.execute("DELETE FROM files WHERE disk_id IN "
+               "(SELECT id FROM disks WHERE fs_uuid = 'CHECK-R')")
+    db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-R'")
+    disk_id = db.execute(
+        "INSERT INTO disks (fs_uuid, display_name, size_bytes, registered_at) "
+        "VALUES ('CHECK-R', 'R', 0, '2026-01-01T00:00:00+00:00')").lastrowid
+    for name in ("a.jpg", "b.jpg"):
+        db.execute("INSERT INTO files (disk_id, path, size, mtime, sha256) "
+                   "VALUES (?, ?, 1, 0, 'abc')", (disk_id, name))
+
+    def with_hashes():
+        return db.scalar("SELECT COUNT(*) FROM files WHERE disk_id = ? "
+                         "AND sha256 IS NOT NULL", (disk_id,), 0)
+
+    problems = []
+    main.rehash_disk(Request(), "checks", disk_id, understood="")
+    if with_hashes() != 2:
+        problems.append("an unconfirmed click threw the hashes away")
+    main.rehash_disk(Request(), "checks", disk_id, understood="1")
+    if with_hashes() != 0:
+        problems.append("a confirmed request did not drop the hashes")
+
+    db.execute("DELETE FROM files WHERE disk_id = ?", (disk_id,))
+    db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-R'")
+
+    check("throwing away every hash takes a confirmation",
+          not problems, "; ".join(problems[:2]))
+
+
 def a_volume_label_fits_its_filesystem() -> None:
     """mkfs.exfat refuses a long label rather than shortening it.
 
@@ -903,6 +952,7 @@ def main() -> int:
     authentication_holds()
     system_partitions_are_recognised()
     demotion_is_the_only_way_out_of_a_master()
+    throwing_away_hashes_takes_a_confirmation()
     a_volume_label_fits_its_filesystem()
     a_master_serves_many_sets_and_a_copy_serves_one()
     smart_values_are_judged()

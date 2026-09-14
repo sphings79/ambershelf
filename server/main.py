@@ -965,13 +965,27 @@ def scan_all(request: Request, set_name: str):
 
 
 @app.post("/sets/{set_name}/rehash/{disk_id}")
-def rehash_disk(request: Request, set_name: str, disk_id: int):
+def rehash_disk(request: Request, set_name: str, disk_id: int,
+                understood: str = Form("")):
+    """Throw away every hash of one disk, so the next run reads it all again.
+
+    Hours of work on a large disk, and nothing brings the hashes back. So it
+    is not something a single click does - the warning has to be
+    acknowledged, and what it costs is said before it happens.
+    """
     if manager.busy_with(disk_id=disk_id) is not None:
         return flash(request, "/", "this disk is busy", "error")
+    if understood != "1":
+        return flash(request, "/", "rehash.not_understood", "error")
+
+    disk = db.disk_by_id(disk_id, set_name)
+    name = disk["display_name"] if disk else str(disk_id)
     count = scanner.rehash_disk(disk_id)
-    db.log_event("info", f"{count:,} hashes dropped, they are recomputed on the next index run",
-                 set_name, "scan")
-    return flash(request, "/", f"{count} hashes dropped", "ok")
+    db.log_event("warning",
+                 f"{name}: {count:,} hashes dropped by hand - the whole disk is read "
+                 "again on the next index run", set_name, "scan")
+    return flash(request, "/", say(request, "rehash.all_done",
+                                   count=f"{count:,}".replace(",", ".")), "warn")
 
 
 @app.post("/sets/{set_name}/rehash-files/{disk_id}")

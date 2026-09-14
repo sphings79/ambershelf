@@ -159,12 +159,31 @@
               {{ t('overview.last_scan') }}: {{ d.scan.last_scan.finished_at|dt }}
             {% else %}{{ t('common.never') }}{% endif %}
           </span>
-          <form class="inline" method="post" action="/sets/{{ s.name }}/rehash/{{ d.id }}">
-            <button class="quiet" title="{{ t('overview.rehash.help') }}"
-                    {{ 'disabled' if not d.scan.files }}>
-              {{ ui.icon('refresh', 15) }} {{ t('overview.rehash') }}</button>
-          </form>
           {% if d.scan.files %}
+            {# Throwing away every hash means reading the whole disk again -
+               hours on a big one. It used to happen on one click with no
+               warning and no way back. #}
+            <details class="rehash-some">
+              <summary class="small muted">
+                {{ ui.icon('refresh', 13) }} {{ t('overview.rehash') }}</summary>
+              <form method="post" action="/sets/{{ s.name }}/rehash/{{ d.id }}">
+                <div class="note warn">
+                  <span class="note-icon">{{ ui.icon('alert', 18) }}</span>
+                  <div>
+                    <strong>{{ t('rehash.all_warning', count=d.scan.files|thousands,
+                                 size=d.scan.bytes|bytes) }}</strong>
+                    <p>{{ t('rehash.all_help') }}</p>
+                  </div>
+                </div>
+                <label class="check" style="margin-bottom:8px">
+                  <input type="checkbox" name="understood" value="1" required>
+                  {{ t('rehash.all_understood') }}
+                </label>
+                <button class="danger">{{ ui.icon('refresh', 14) }}
+                  {{ t('rehash.all_do') }}</button>
+              </form>
+            </details>
+
             <details class="rehash-some">
               <summary class="small muted">{{ t('rehash.some') }}</summary>
               {# A file put back with its original timestamp looks unchanged
