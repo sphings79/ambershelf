@@ -643,6 +643,33 @@ def corrected_rules_drop_their_verdicts() -> None:
           not problems, "; ".join(problems[:3]))
 
 
+def a_volume_label_fits_its_filesystem() -> None:
+    """mkfs.exfat refuses a long label rather than shortening it.
+
+    Eleven characters, inherited from FAT. Twelve came back as "input string
+    is too long" and left the disk unformatted - after the user had confirmed
+    erasing it twice.
+    """
+    helper = load(ROOT / "docker" / "helper" / "ambershelf-helper.py")
+    problems = []
+    if helper.LABEL_LIMITS.get("exfat") != 11:
+        problems.append("exFAT is not held to eleven characters")
+    if helper.LABEL_LIMITS.get("ntfs") != 32:
+        problems.append("NTFS is not held to thirty-two characters")
+    for filesystem in ("exfat", "ntfs"):
+        limit = helper.LABEL_LIMITS[filesystem]
+        if len(("x" * 40)[:limit]) != limit:
+            problems.append(f"{filesystem} does not cut a long label")
+    # Every filesystem the program can create has to have a limit written
+    # down, or a new one would silently fall back to somebody's guess.
+    missing = set(helper.MKFS) - set(helper.LABEL_LIMITS)
+    if missing:
+        problems.append(f"no label limit for {', '.join(sorted(missing))}")
+
+    check("a volume label fits the filesystem it is written to",
+          not problems, "; ".join(problems[:3]))
+
+
 def a_master_serves_many_sets_and_a_copy_serves_one() -> None:
     """The rules that make several sets on one master safe.
 
@@ -876,6 +903,7 @@ def main() -> int:
     authentication_holds()
     system_partitions_are_recognised()
     demotion_is_the_only_way_out_of_a_master()
+    a_volume_label_fits_its_filesystem()
     a_master_serves_many_sets_and_a_copy_serves_one()
     smart_values_are_judged()
     one_disk_serves_many_sets_but_keeps_one_index()

@@ -164,6 +164,22 @@
                     {{ 'disabled' if not d.scan.files }}>
               {{ ui.icon('refresh', 15) }} {{ t('overview.rehash') }}</button>
           </form>
+          {% if d.scan.files %}
+            <details class="rehash-some">
+              <summary class="small muted">{{ t('rehash.some') }}</summary>
+              {# A file put back with its original timestamp looks unchanged
+                 to the shortcut that skips unchanged files, so its old hash
+                 would be believed for ever. Re-reading the whole disk for a
+                 handful of files is a poor trade. #}
+              <form method="post" action="/sets/{{ s.name }}/rehash-files/{{ d.id }}">
+                <p class="small muted">{{ t('rehash.some_help') }}</p>
+                <textarea name="paths" rows="4" spellcheck="false"
+                          placeholder="{{ t('rehash.some_placeholder') }}"></textarea>
+                <button class="quiet">{{ ui.icon('refresh', 14) }}
+                  {{ t('rehash.some_do') }}</button>
+              </form>
+            </details>
+          {% endif %}
           <form class="inline" method="post" action="/sets/{{ s.name }}/scan/{{ d.id }}">
             <button {{ 'disabled' if not d.mounted }}>
               {{ ui.icon('scan', 15) }} {{ t('overview.scan') }}</button>

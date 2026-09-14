@@ -77,6 +77,10 @@ class MountReport:
     attached: list[dict] = field(default_factory=list)
     missing: list[dict] = field(default_factory=list)
     failed: list[dict] = field(default_factory=list)
+    #: Left mounted on purpose - a master another set is still reading. Not
+    #: a failure, but the reader has to be told, or a disk that stays put
+    #: after "eject" looks like a bug.
+    kept: list[dict] = field(default_factory=list)
 
 
 def sets_from_registrations(entries: list[dict]) -> list[dict]:

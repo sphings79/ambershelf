@@ -392,6 +392,21 @@ def take_flash(request: Request) -> tuple[str | None, str]:
     return entry[0], entry[1]
 
 
+def say(request: Request, key: str, **params) -> str:
+    """Translate a message that carries values, here and now.
+
+    A message handed to flash() is translated later, by the page that shows
+    it - but only a bare key can be. One with values in it has to be put
+    together while the values are still around.
+    """
+    language = i18n.pick_language(
+        request.cookies.get("lang"),
+        request.headers.get("accept-language"),
+        config.DEFAULT_LANGUAGE,
+    )
+    return i18n.translator(language)(key, **params)
+
+
 def flash(request: Request, url: str, message: str, level: str = "info") -> RedirectResponse:
     """Carry a message to the next page, without putting it in the address.
 
@@ -890,6 +905,13 @@ def umount_set(request: Request, set_name: str):
             detail = "; ".join(f"{e['mountpoint']}: {e['error']}" for e in result.failed)
             return flash(request, "/", detail, "error")
         db.log_event("info", f"{len(result.attached)} unmounted", set_name, "mount")
+        if result.kept:
+            # A master another set is still reading stays where it is. Saying
+            # nothing would make "eject" look as if it had not worked.
+            names = ", ".join(f"{e['display_name']} ({e['used_by']})"
+                              for e in result.kept)
+            db.log_event("info", f"still needed elsewhere: {names}", set_name, "mount")
+            return flash(request, "/", say(request, "umount.kept", names=names), "warn")
         return flash(request, "/", "unmounted", "ok")
     except BackendError as exc:
         return flash(request, "/", str(exc), "error")
@@ -950,6 +972,28 @@ def rehash_disk(request: Request, set_name: str, disk_id: int):
     db.log_event("info", f"{count:,} hashes dropped, they are recomputed on the next index run",
                  set_name, "scan")
     return flash(request, "/", f"{count} hashes dropped", "ok")
+
+
+@app.post("/sets/{set_name}/rehash-files/{disk_id}")
+async def rehash_files(request: Request, set_name: str, disk_id: int):
+    """Forget the hashes of a few named files, one path per line."""
+    form = await request.form()
+    paths = [line.strip() for line in str(form.get("paths") or "").splitlines()
+             if line.strip()]
+    if manager.busy_with(disk_id=disk_id) is not None:
+        return flash(request, "/", "this disk is busy", "error")
+    if not paths:
+        return flash(request, "/", "rehash.no_paths", "error")
+
+    count = scanner.rehash_paths(disk_id, paths)
+    missing = len(paths) - count
+    db.log_event("info", f"{count:,} of {len(paths):,} named file(s) marked for rehashing",
+                 set_name, "scan")
+    if not count:
+        return flash(request, "/", "rehash.none_matched", "error")
+    if missing:
+        return flash(request, "/", "rehash.some_missing", "warn")
+    return flash(request, "/", "rehash.marked", "ok")
 
 
 # ----------------------------------------------------------------- compare --

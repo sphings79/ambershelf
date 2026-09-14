@@ -141,3 +141,24 @@
     sync();
   });
 })();
+
+// ---------------------------------------------------------------- labels
+// A volume label is as long as its filesystem allows: eleven characters on
+// exFAT, thirty-two on NTFS. mkfs.exfat refuses a longer one instead of
+// shortening it, so the field has to say so before the disk is erased.
+(function () {
+  Array.prototype.forEach.call(document.querySelectorAll(".fs-choice"), function (choice) {
+    var form = choice.closest("form");
+    var field = form && form.querySelector(".fs-label");
+    if (!field) { return; }
+    function sync() {
+      var max = parseInt(choice.options[choice.selectedIndex]
+        .getAttribute("data-label-max"), 10) || 11;
+      field.maxLength = max;
+      // Switching from NTFS to exFAT can leave a name that no longer fits.
+      if (field.value.length > max) { field.value = field.value.slice(0, max); }
+    }
+    choice.addEventListener("change", sync);
+    sync();
+  });
+})();

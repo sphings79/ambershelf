@@ -555,3 +555,10 @@ tr.row-uncovered td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
     transition-duration: .01ms !important;
   }
 }
+
+.rehash-some summary { cursor: pointer; padding: 4px 0; }
+.rehash-some textarea {
+  width: 100%; margin: 6px 0; font-family: var(--font-mono); font-size: 12px;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-1); color: var(--text);
+}

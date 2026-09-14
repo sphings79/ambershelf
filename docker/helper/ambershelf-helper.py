@@ -118,6 +118,12 @@ MKFS = {
     "ntfs": ["/usr/sbin/mkfs.ntfs", "--quick", "--label", "{label}", "{device}"],
 }
 
+#: How long a volume label may be, per filesystem. exFAT inherited FAT's
+#: eleven characters; mkfs.exfat does not truncate, it refuses with "input
+#: string is too long" and leaves the disk unformatted. Cutting it here beats
+#: handing that back to somebody who typed a twelve-letter name.
+LABEL_LIMITS = {"exfat": 11, "ntfs": 32}
+
 #: Microsoft basic data - what macOS and Windows create for exFAT and NTFS,
 #: and what they both recognise without argument.
 PARTITION_TYPE = "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"
@@ -1210,7 +1216,8 @@ def handle_format(request: dict) -> dict:
     filesystem = str(request.get("filesystem") or "exfat").lower()
     if filesystem not in MKFS:
         raise RuntimeError(f"cannot create {filesystem!r}")
-    label = require_name(request.get("label") or "AmberShelf", "the label")[:15]
+    label = require_name(request.get("label") or "AmberShelf", "the label")
+    label = label[:LABEL_LIMITS.get(filesystem, 11)]
 
     whole_disk = entry["type"] in ("disk", "loop")
     device = entry["path"]

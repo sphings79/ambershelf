@@ -224,15 +224,21 @@
                 <div class="actions" style="margin-bottom:8px">
                   <label class="field" style="flex:0 0 auto">
                     <span>{{ t('format.filesystem') }}</span>
-                    <select name="filesystem">
-                      <option value="exfat">exFAT — {{ t('format.exfat_hint') }}</option>
-                      <option value="ntfs">NTFS — {{ t('format.ntfs_hint') }}</option>
+                    <select name="filesystem" class="fs-choice">
+                      <option value="exfat" data-label-max="11">
+                        exFAT — {{ t('format.exfat_hint') }}</option>
+                      <option value="ntfs" data-label-max="32">
+                        NTFS — {{ t('format.ntfs_hint') }}</option>
                     </select>
                   </label>
                   <label class="field" style="flex:0 0 auto">
                     <span>{{ t('format.label') }}</span>
-                    <input name="label" value="{{ d.label or 'AmberShelf' }}"
-                           maxlength="15" size="12">
+                    {# exFAT allows eleven characters and mkfs refuses a longer
+                       one outright rather than shortening it, so the field
+                       follows the chosen filesystem. #}
+                    <input name="label" class="fs-label" value="{{ d.label or 'AmberShelf' }}"
+                           maxlength="11" size="12">
+                    <span class="faint small fs-label-hint">{{ t('format.label_limit') }}</span>
                   </label>
                 </div>
 

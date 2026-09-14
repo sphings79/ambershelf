@@ -342,6 +342,25 @@ def rehash_disk(disk_id: int) -> int:
                       (disk_id,)).rowcount
 
 
+def rehash_paths(disk_id: int, paths: list[str]) -> int:
+    """Drop the stored hash of named files only.
+
+    A file put back from another source keeps its original timestamp, which
+    is the right thing for an archive and the wrong thing for the shortcut
+    that skips unchanged files: size and time still match, so the hash of the
+    old contents would be believed for ever. Re-reading the whole disk to fix
+    a handful of files is a poor trade.
+    """
+    if not paths:
+        return 0
+    changed = 0
+    for path in paths:
+        changed += db.execute(
+            "UPDATE files SET sha256 = NULL, hashed_at = NULL, health = NULL "
+            "WHERE disk_id = ? AND path = ?", (disk_id, path)).rowcount
+    return changed
+
+
 def scan_state(disk_id: int) -> dict:
     row = db.one("SELECT * FROM scans WHERE disk_id = ? ORDER BY id DESC LIMIT 1", (disk_id,))
     # A fresh copy holds nothing at all, so "has files" is not the same question

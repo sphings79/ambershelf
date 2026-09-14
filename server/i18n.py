@@ -105,6 +105,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.eject": "Auftrag {name} auswerfen",
         "disks.eject_help":
             "Hängt alle Platten dieses Auftrags aus. Erst danach dürfen sie abgezogen werden. Ein Master, den ein anderer Auftrag noch benutzt, bleibt eingehängt.",
+        "umount.kept":
+            "Ausgehängt. Eingehängt bleibt, was ein anderer Auftrag noch liest: {names}",
+        "rehash.some": "Nur einzelne Dateien neu prüfen …",
+        "rehash.some_help":
+            "Ein Pfad je Zeile, relativ zur Wurzel der Platte. Nötig, wenn du eine Datei "
+            "von außen ersetzt und dabei den Originalzeitstempel behalten hast — dann "
+            "hält AmberShelf sie für unverändert und würde die alte Prüfsumme glauben.",
+        "rehash.some_placeholder": "! Fotos !/2018/urlaub.jpg",
+        "rehash.some_do": "Zum Neu-Prüfen vormerken",
+        "rehash.marked": "Vorgemerkt. Das nächste Einlesen prüft diese Dateien neu.",
+        "rehash.some_missing":
+            "Vorgemerkt — aber nicht jeder Pfad war im Verzeichnis. Siehe Verlauf.",
+        "rehash.none_matched": "Kein einziger dieser Pfade steht im Verzeichnis.",
+        "rehash.no_paths": "Kein Pfad angegeben.",
         "sets.title": "Aufträge",
         "sets.note":
             "Ein Auftrag ist ein Master und die Kopien, die von ihm leben. Dieselbe "
@@ -263,6 +277,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "format.contents_empty": "Auf der Platte ist kein lesbares Dateisystem.",
         "format.filesystem": "Dateisystem",
         "format.label": "Bezeichnung",
+        "format.label_limit":
+            "exFAT erlaubt 11 Zeichen, NTFS 32 \u2014 l\u00e4ngere werden gek\u00fcrzt.",
         "format.exfat_hint": "Mac und Windows, lesen und schreiben",
         "format.ntfs_hint": "robuster, Mac nur lesend",
         "format.understood": "Mir ist klar, dass alle Daten auf dieser Platte verloren gehen.",
@@ -682,6 +698,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "disks.eject": "Eject set {name}",
         "disks.eject_help":
             "Unmounts every disk of this set. Only then may they be unplugged.",
+        "umount.kept":
+            "Unmounted. Still mounted because another set is reading it: {names}",
+        "rehash.some": "Re-check only named files \u2026",
+        "rehash.some_help":
+            "One path per line, relative to the root of the disk. Needed when you have "
+            "replaced a file from elsewhere and kept its original timestamp - AmberShelf "
+            "then takes it for unchanged and would believe the old checksum.",
+        "rehash.some_placeholder": "! Fotos !/2018/holiday.jpg",
+        "rehash.some_do": "Mark for re-checking",
+        "rehash.marked": "Marked. The next index run reads these files again.",
+        "rehash.some_missing":
+            "Marked - but not every path was in the index. See the history.",
+        "rehash.none_matched": "Not one of those paths is in the index.",
+        "rehash.no_paths": "No path given.",
         "sets.title": "Sets",
         "sets.note":
             "A set is one master and the copies that live off it. The same master disk "
@@ -838,6 +868,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "format.contents_empty": "There is no readable filesystem on this disk.",
         "format.filesystem": "Filesystem",
         "format.label": "Label",
+        "format.label_limit":
+            "exFAT allows 11 characters, NTFS 32 \u2014 longer ones are shortened.",
         "format.exfat_hint": "macOS and Windows, read and write",
         "format.ntfs_hint": "more robust, macOS read-only",
         "format.understood": "I understand that all data on this disk will be lost.",

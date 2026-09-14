@@ -161,7 +161,8 @@ class LinuxBackend:
     def detach(self, set_name: str) -> MountReport:
         result = call("umount_set", set_name=set_name)
         return MountReport(attached=[{"mountpoint": m} for m in result.get("released", [])],
-                           failed=result.get("failed", []))
+                           failed=result.get("failed", []),
+                           kept=result.get("kept", []))
 
     def status(self, set_name: str) -> list[dict]:
         return call("mount_status", set_name=set_name)["disks"]
