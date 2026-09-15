@@ -666,6 +666,7 @@ def progress_survives_the_process_that_started_it() -> None:
     db.execute("INSERT INTO scans (disk_id, set_name, started_at, state, phase, "
                "files_total, files_hashed) VALUES (?, 'checks', ?, 'running', 'hash', 200, 50)",
                (disk_id, "2026-01-01T00:00:00+00:00"))
+    scan_id = db.scalar("SELECT id FROM scans ORDER BY id DESC LIMIT 1", (), 0)
     plan_id = db.execute("INSERT INTO plans (set_name, created_at, state) "
                          "VALUES ('checks', ?, 'ready')",
                          ("2026-01-01T00:00:00+00:00",)).lastrowid
@@ -690,6 +691,13 @@ def progress_survives_the_process_that_started_it() -> None:
             - set(entry)
         if missing:
             problems.append(f"{entry['kind']} lacks {', '.join(sorted(missing))}")
+
+    # The third phase counts differently, and used to count only in memory.
+    db.execute("UPDATE scans SET phase = 'check', files_total = 200, files_checked = 150 "
+               "WHERE id = ?", (scan_id,))
+    checking = next(e for e in db.work_in_progress() if e["kind"] == "scan")
+    if checking["percent"] != 75.0:
+        problems.append(f"the check phase reports {checking['percent']} %, not 75")
 
     # Once it is finished it must stop being reported.
     db.execute("UPDATE runs SET state = 'done' WHERE 1=1")

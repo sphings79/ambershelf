@@ -263,6 +263,8 @@ def scan_disk(job: Job, disk_id: int, set_name: str | None = None) -> None:
     job.bytes_total = 0
     job.files_done = 0
     checked = 0
+    db.execute("UPDATE scans SET files_total = ?, files_checked = 0 WHERE id = ?",
+               (unchecked, scan_id))
 
     while True:
         rows = db.query("SELECT path FROM files WHERE disk_id = ? AND health IS NULL "
@@ -283,6 +285,8 @@ def scan_disk(job: Job, disk_id: int, set_name: str | None = None) -> None:
         connection.executemany(
             "UPDATE files SET health = ? WHERE disk_id = ? AND path = ?", updates)
         connection.execute("COMMIT")
+        db.execute("UPDATE scans SET files_checked = ?, current_path = ? WHERE id = ?",
+                   (checked, job.current_path, scan_id))
         if not job.should_continue():
             break
 

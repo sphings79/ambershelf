@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS scans (
     bytes_total  INTEGER NOT NULL DEFAULT 0,
     files_hashed INTEGER NOT NULL DEFAULT 0,
     bytes_hashed INTEGER NOT NULL DEFAULT 0,
+    files_checked INTEGER NOT NULL DEFAULT 0,
     current_path TEXT,
     message      TEXT,
     -- Counts rather than a sentence, so the interface can phrase them in
@@ -271,6 +272,10 @@ def connect() -> sqlite3.Connection:
 # EXISTS does not touch an existing table, so they are added by hand.
 MIGRATIONS = [
     ("scans", "summary_json", "TEXT NOT NULL DEFAULT '{}'"),
+    # The third phase used to count only in the job's own memory, so a panel
+    # fed from here sat at zero while it worked - which on a disk that needs
+    # no hashing is the entire scan.
+    ("scans", "files_checked", "INTEGER NOT NULL DEFAULT 0"),
     ("files", "health", "TEXT"),
 ]
 
@@ -715,8 +720,9 @@ def work_in_progress() -> list[dict]:
         total = row["files_total"] or 0
         done = row["files_hashed"] or 0
         if row["phase"] == "check":
-            # The third phase counts its own way through what is left.
-            total = total or done
+            # The third phase counts what it has looked at, which on a disk
+            # that needed no hashing is the only thing happening at all.
+            done = row["files_checked"] or 0
         found.append({
             "id": -row["id"], "kind": "scan", "label": row["display_name"],
             "set_name": row["set_name"], "disk_id": row["disk_id"],
