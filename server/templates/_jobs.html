@@ -5,16 +5,26 @@
       <strong>{{ job.label }}</strong>
       <span class="chip {{ 'warn' if job.state == 'paused' else 'accent' }}">{{ t('job.' ~ job.state) }}</span>
       {% if job.phase %}<span class="chip outline">{{ t('job.phase.' ~ job.phase) }}</span>{% endif %}
-      <span class="spacer">
-        <form class="inline" method="post"
-              action="/jobs/{{ job.id }}/{{ 'resume' if job.state == 'paused' else 'pause' }}">
-          <button class="quiet icon-only" title="{{ t('job.resume') if job.state == 'paused' else t('job.pause') }}">
-            {{ ui.icon('play' if job.state == 'paused' else 'pause', 15) }}</button>
-        </form>
-        <form class="inline" method="post" action="/jobs/{{ job.id }}/cancel">
-          <button class="quiet icon-only danger" title="{{ t('job.cancel') }}">{{ ui.icon('close', 15) }}</button>
-        </form>
-      </span>
+      {# Work read back from the database can be shown but not steered:
+         pausing needs a process to talk to, and that one is gone or
+         elsewhere. Better an honest note than two buttons that do nothing. #}
+      {% if job.detached %}
+        <span class="spacer">
+          <span class="chip outline" title="{{ t('job.detached.help') }}">
+            {{ ui.icon('info', 12) }} {{ t('job.detached') }}</span>
+        </span>
+      {% else %}
+        <span class="spacer">
+          <form class="inline" method="post"
+                action="/jobs/{{ job.id }}/{{ 'resume' if job.state == 'paused' else 'pause' }}">
+            <button class="quiet icon-only" title="{{ t('job.resume') if job.state == 'paused' else t('job.pause') }}">
+              {{ ui.icon('play' if job.state == 'paused' else 'pause', 15) }}</button>
+          </form>
+          <form class="inline" method="post" action="/jobs/{{ job.id }}/cancel">
+            <button class="quiet icon-only danger" title="{{ t('job.cancel') }}">{{ ui.icon('close', 15) }}</button>
+          </form>
+        </span>
+      {% endif %}
     </div>
     <div class="meter {{ 'is-running' if job.state == 'running' }}">
       <span style="width: {{ job.percent }}%"></span>

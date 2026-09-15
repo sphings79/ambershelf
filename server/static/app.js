@@ -56,11 +56,15 @@
           '<span class="chip ' + (paused ? "warn" : "accent") + '">' + stateLabel + "</span>" +
           (phaseLabel ? '<span class="chip outline">' + phaseLabel + "</span>" : "") +
           '<span class="spacer">' +
-            '<form class="inline" method="post" action="/jobs/' + job.id +
-              (paused ? "/resume" : "/pause") + '">' +
-              '<button class="quiet icon-only">' + (paused ? ICON_PLAY : ICON_PAUSE) + "</button></form>" +
-            '<form class="inline" method="post" action="/jobs/' + job.id + '/cancel">' +
-              '<button class="quiet icon-only danger">' + ICON_CLOSE + "</button></form>" +
+            // Work read back from the database can be shown but not steered.
+            (job.detached
+              ? '<span class="chip outline">' + (labels["detached"] || "") + "</span>"
+              : '<form class="inline" method="post" action="/jobs/' + job.id +
+                  (paused ? "/resume" : "/pause") + '">' +
+                  '<button class="quiet icon-only">' +
+                    (paused ? ICON_PLAY : ICON_PAUSE) + "</button></form>" +
+                '<form class="inline" method="post" action="/jobs/' + job.id + '/cancel">' +
+                  '<button class="quiet icon-only danger">' + ICON_CLOSE + "</button></form>") +
           "</span>" +
         "</div>" +
         '<div class="meter' + (job.state === "running" ? " is-running" : "") + '">' +

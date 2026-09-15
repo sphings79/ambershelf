@@ -240,6 +240,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "job.pause": "Pause",
         "job.resume": "Weiter",
         "job.cancel": "Abbrechen",
+        "job.detached": "läuft weiter",
+        "job.detached.help":
+            "Dieser Vorgang wurde nicht von dieser Oberfläche gestartet oder hat "
+            "einen Neustart überdauert. Der Fortschritt kommt aus der Datenbank; "
+            "anhalten lässt er sich von hier nicht.",
         "job.phase.walk": "Ordner durchgehen",
         "job.phase.hash": "Prüfsummen berechnen",
         "job.phase.scope": "Zuordnung auflösen",
@@ -841,6 +846,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "job.pause": "Pause",
         "job.resume": "Resume",
         "job.cancel": "Cancel",
+        "job.detached": "still going",
+        "job.detached.help":
+            "This one was not started from here, or outlived a restart. The "
+            "progress is read from the database; it cannot be paused from here.",
         "job.phase.walk": "Walking folders",
         "job.phase.hash": "Hashing",
         "job.phase.scope": "Resolving assignments",

@@ -643,6 +643,68 @@ def corrected_rules_drop_their_verdicts() -> None:
           not problems, "; ".join(problems[:3]))
 
 
+def progress_survives_the_process_that_started_it() -> None:
+    """A restart must not make running work look as if it had stopped.
+
+    The panel used to be fed only from a list in memory, so a container
+    restart blanked it while the copying carried on underneath.
+    """
+    from engine import db
+
+    db.initialise()
+    for table in ("run_items", "runs", "plan_items", "plans", "scans", "files"):
+        db.execute(f"DELETE FROM {table} WHERE 1=1")
+    db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-P'")
+    disk_id = db.execute(
+        "INSERT INTO disks (fs_uuid, display_name, size_bytes, registered_at) "
+        "VALUES ('CHECK-P', 'Platte', 0, '2026-01-01T00:00:00+00:00')").lastrowid
+
+    problems = []
+    if db.work_in_progress():
+        problems.append("something was reported although nothing runs")
+
+    db.execute("INSERT INTO scans (disk_id, set_name, started_at, state, phase, "
+               "files_total, files_hashed) VALUES (?, 'checks', ?, 'running', 'hash', 200, 50)",
+               (disk_id, "2026-01-01T00:00:00+00:00"))
+    plan_id = db.execute("INSERT INTO plans (set_name, created_at, state) "
+                         "VALUES ('checks', ?, 'ready')",
+                         ("2026-01-01T00:00:00+00:00",)).lastrowid
+    for n in range(4):
+        db.execute("INSERT INTO plan_items (plan_id, slave_disk_id, kind, path, size) "
+                   "VALUES (?, ?, 'new', ?, 25)", (plan_id, disk_id, f"f{n}"))
+    db.execute("INSERT INTO runs (plan_id, set_name, started_at, state, copied, bytes) "
+               "VALUES (?, 'checks', ?, 'running', 1, 25)",
+               (plan_id, "2026-01-01T00:00:00+00:00"))
+
+    found = {entry["kind"]: entry for entry in db.work_in_progress()}
+    if set(found) != {"scan", "apply"}:
+        problems.append(f"reported {sorted(found)} instead of a scan and a run")
+    if found.get("scan", {}).get("percent") != 25.0:
+        problems.append(f"the scan is at {found.get('scan', {}).get('percent')} %, not 25")
+    if found.get("apply", {}).get("percent") != 25.0:
+        problems.append(f"the run is at {found.get('apply', {}).get('percent')} %, not 25")
+    for entry in found.values():
+        if not entry.get("detached"):
+            problems.append(f"{entry['kind']} did not say it cannot be steered")
+        missing = {"label", "state", "phase", "files_done", "files_total", "started_at"} \
+            - set(entry)
+        if missing:
+            problems.append(f"{entry['kind']} lacks {', '.join(sorted(missing))}")
+
+    # Once it is finished it must stop being reported.
+    db.execute("UPDATE runs SET state = 'done' WHERE 1=1")
+    db.execute("UPDATE scans SET state = 'done' WHERE 1=1")
+    if db.work_in_progress():
+        problems.append("finished work was still reported as running")
+
+    for table in ("run_items", "runs", "plan_items", "plans", "scans", "files"):
+        db.execute(f"DELETE FROM {table} WHERE 1=1")
+    db.execute("DELETE FROM disks WHERE fs_uuid = 'CHECK-P'")
+
+    check("progress survives the process that started it",
+          not problems, "; ".join(problems[:3]))
+
+
 def throwing_away_hashes_takes_a_confirmation() -> None:
     """Hours of reading must not hang on one click.
 
@@ -952,6 +1014,7 @@ def main() -> int:
     authentication_holds()
     system_partitions_are_recognised()
     demotion_is_the_only_way_out_of_a_master()
+    progress_survives_the_process_that_started_it()
     throwing_away_hashes_takes_a_confirmation()
     a_volume_label_fits_its_filesystem()
     a_master_serves_many_sets_and_a_copy_serves_one()

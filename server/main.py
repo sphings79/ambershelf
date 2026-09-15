@@ -341,7 +341,8 @@ def context(request: Request, **extra) -> dict:
             **{state: translate(f"job.{state}")
                for state in ("queued", "running", "paused", "done", "failed", "cancelled")},
             **{f"phase.{phase}": translate(f"job.phase.{phase}")
-               for phase in ("walk", "hash", "scope", "compare", "apply")},
+               for phase in ("walk", "hash", "check", "scope", "compare", "apply")},
+            "detached": translate("job.detached"),
         }, ensure_ascii=False),
     }
     base.update(extra)
@@ -1215,8 +1216,20 @@ def rebuild_tree(request: Request, set_name: str):
 
 @app.get("/api/jobs")
 def api_jobs():
+    """What is being worked on, from memory and from the database.
+
+    The manager knows what this process started. The database knows what is
+    under way at all - including work that outlived the process that began
+    it, or was begun beside it. Anything the manager already reports is left
+    to the manager, because only it can offer a pause button.
+    """
+    active = [job.as_dict() for job in manager.active()]
+    seen = {(job["kind"], job["set_name"], job["disk_id"]) for job in active}
+    for entry in db.work_in_progress():
+        if (entry["kind"], entry["set_name"], entry["disk_id"]) not in seen:
+            active.append(entry)
     return JSONResponse({
-        "active": [job.as_dict() for job in manager.active()],
+        "active": active,
         "recent": [job.as_dict() for job in manager.recent(8)],
     })
 

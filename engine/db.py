@@ -698,6 +698,59 @@ def forget_verdicts_on_new_rules(version: int) -> int:
     return affected
 
 
+def work_in_progress() -> list[dict]:
+    """Work that is under way, read from the database rather than from memory.
+
+    A job only lives in the process that started it, so the live panel went
+    blank whenever that process was restarted - while the work carried on.
+    The rows carry everything the panel needs, and they survive.
+
+    The shape matches what a Job hands out, so the same panel draws both.
+    """
+    found = []
+    for row in query(
+        "SELECT s.*, d.display_name FROM scans s JOIN disks d ON d.id = s.disk_id "
+        "WHERE s.state = 'running' ORDER BY s.id"
+    ):
+        total = row["files_total"] or 0
+        done = row["files_hashed"] or 0
+        if row["phase"] == "check":
+            # The third phase counts its own way through what is left.
+            total = total or done
+        found.append({
+            "id": -row["id"], "kind": "scan", "label": row["display_name"],
+            "set_name": row["set_name"], "disk_id": row["disk_id"],
+            "scan_id": row["id"], "state": "running", "phase": row["phase"],
+            "message": None, "error": None,
+            "files_total": total, "files_done": done,
+            "bytes_total": row["bytes_total"] or 0, "bytes_done": row["bytes_hashed"] or 0,
+            "current_path": row["current_path"],
+            "percent": round(min(100.0, done * 100.0 / total), 1) if total else 0.0,
+            "started_at": row["started_at"], "finished_at": None,
+            "detached": True,
+        })
+
+    for row in query("SELECT * FROM runs WHERE state = 'running' ORDER BY id"):
+        total = scalar("SELECT COUNT(*) FROM plan_items WHERE plan_id = ?",
+                       (row["plan_id"],), 0)
+        bytes_total = scalar("SELECT COALESCE(SUM(size), 0) FROM plan_items "
+                             "WHERE plan_id = ?", (row["plan_id"],), 0)
+        done = (row["copied"] or 0) + (row["replaced"] or 0) + (row["renamed"] or 0) \
+            + (row["deleted"] or 0) + (row["failed"] or 0)
+        found.append({
+            "id": -row["id"], "kind": "apply", "label": row["set_name"],
+            "set_name": row["set_name"], "disk_id": None, "scan_id": None,
+            "state": "running", "phase": "apply", "message": None, "error": None,
+            "files_total": total, "files_done": done,
+            "bytes_total": bytes_total, "bytes_done": row["bytes"] or 0,
+            "current_path": None,
+            "percent": round(min(100.0, done * 100.0 / total), 1) if total else 0.0,
+            "started_at": row["started_at"], "finished_at": None,
+            "detached": True,
+        })
+    return found
+
+
 def close_interrupted() -> dict[str, int]:
     """Finish anything that was still marked as running.
 
